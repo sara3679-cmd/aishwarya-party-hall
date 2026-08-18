@@ -1,0 +1,42 @@
+.bookingReport .dateColumn { min-width: 145px; }
+.bookingReport .dateCell b,
+.bookingReport .customerCell b {
+  font-size: 13px;
+  font-weight: 800;
+}
+.bookingReport .dateCell small,
+.bookingReport .customerCell a {
+  margin-top: 11px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.bookingReport .customerCell { min-width: 155px; }
+.billNumber { color: var(--maroon) !important; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; }
+.billCell { min-width: 95px; color: var(--maroon); font-weight: 800; }
+
+/* Colour the complete row so each hall is recognisable at a glance. */
+.bookingReport tbody tr:has(.locationBadge.padi) {
+  background: #fff4df;
+}
+.bookingReport tbody tr:has(.locationBadge.korattur) {
+  background: #f2eafa;
+}
+.bookingReport tbody tr:has(.locationBadge.padi):hover {
+  background: #fce5b7;
+}
+.bookingReport tbody tr:has(.locationBadge.korattur):hover {
+  background: #e6d6f3;
+}
+.bookingReport tbody tr:has(.locationBadge.padi) td:first-child {
+  box-shadow: inset 5px 0 0 #d69b29;
+}
+.bookingReport tbody tr:has(.locationBadge.korattur) td:first-child {
+  box-shadow: inset 5px 0 0 #7b4a91;
+}
+
+.financialFilters{display:flex;gap:18px;background:#fff;padding:20px 24px;margin-bottom:22px;border:1px solid var(--line)}.financialFilters label{color:var(--maroon);font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase}.financialFilters input,.financialFilters select{display:block;margin-top:7px;padding:10px;border:1px solid var(--line);background:#fff}.financialCards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:25px}.financialCards article{background:#fff;padding:20px;border-top:4px solid var(--gold);display:flex;flex-direction:column;gap:8px}.financialCards small{text-transform:uppercase;color:var(--muted);font-size:8px;letter-spacing:1px}.financialCards b{font:23px Georgia,serif;color:var(--maroon)}.financialCards .profitCard{background:#edf8ef;border-color:#398050}.financialCards .profitCard b{color:#246438}.financialCards .lossCard{background:#fff0ed;border-color:#a70e13}.financialGrid{display:grid;grid-template-columns:350px 1fr;gap:25px;align-items:start}.expenseForm{position:sticky;top:20px}.financeTables{display:grid;gap:22px}.financeTable{background:#fff;padding:25px}.financeTable h2{font-size:27px;font-weight:400}.financeTable table{width:100%;min-width:700px;border-collapse:collapse;font-size:11px}.financeTable th{background:var(--maroon);color:#fff;text-align:left;text-transform:uppercase;font-size:8px;letter-spacing:.7px}.financeTable th,.financeTable td{padding:11px;border-bottom:1px solid var(--line)}.financeTable tbody tr:nth-child(even){background:#fffaf3}.financeTable td button{border:0;background:#f8e0dc;color:var(--maroon);padding:6px 9px;cursor:pointer}.financeNote{font-size:10px;color:var(--muted);margin-top:20px}@media(max-width:1050px){.financialCards{grid-template-columns:repeat(3,1fr)}.financialGrid{grid-template-columns:1fr}.expenseForm{position:static}}@media(max-width:620px){.financialFilters{flex-direction:column}.financialCards{grid-template-columns:1fr 1fr}.financialCards article:last-child{grid-column:1/-1}.financeTable{padding:18px 12px}}@media print{.financialFilters,.expenseForm,.financeTable td button,.financeNote{display:none!important}.financialGrid{display:block}.financialCards{grid-template-columns:repeat(5,1fr)}.financeTable{padding:10px 0}.financeTable table{min-width:0;font-size:8px}}
+.incomeSection{display:grid;grid-template-columns:350px 1fr;gap:25px;align-items:start;margin-top:25px}.incomeForm{border-top:4px solid #398050}.financialCards{grid-template-columns:repeat(4,1fr)}.financeActions{white-space:nowrap}.financeActions button+button{margin-left:5px}.financeActions button:first-child{background:#f8eed9;color:#7c090c}@media(max-width:1050px){.incomeSection{grid-template-columns:1fr}}@media(max-width:620px){.financialCards{grid-template-columns:1fr 1fr}}@media print{.incomeForm{display:none!important}.incomeSection{display:block}}
+.yearlyCards{grid-template-columns:repeat(5,1fr)}.monthlyProfitTable{padding:30px}.monthlyProfitTable table{min-width:1050px}.monthlyProfitTable td:not(:first-child),.monthlyProfitTable th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}.monthlyProfitTable tbody tr:nth-child(even){background:#fff8ec}.monthlyProfitTable tfoot{background:#3b0708;color:#fff}.monthlyProfitTable tfoot th{padding:15px 11px;font-size:10px}.profitAmount{color:#246438!important;font-weight:800}.lossAmount{color:#a70e13!important;font-weight:800}.monthlyProfitTable tfoot .profitAmount{color:#bce9c7!important}.monthlyProfitTable tfoot .lossAmount{color:#ffd1ca!important}@media(max-width:1050px){.yearlyCards{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.yearlyCards{grid-template-columns:1fr 1fr}.profitLossPage .adminHeaderActions{flex-wrap:wrap}.monthlyProfitTable{padding:18px 12px}}@media print{.profitLossPage .adminHeaderActions,.profitLossPage .financialFilters{display:none!important}.yearlyCards{grid-template-columns:repeat(5,1fr)}.monthlyProfitTable{padding:0}.monthlyProfitTable table{min-width:0;font-size:7px}}
+.userManagementGrid{display:grid;grid-template-columns:380px 1fr;gap:28px;align-items:start}.userList{background:#fff;padding:30px;box-shadow:0 14px 45px rgba(79,36,24,.08)}.userList h2{font-size:28px;font-weight:400}.userList table{width:100%;min-width:620px;border-collapse:collapse;font-size:12px}.userList th{background:var(--maroon);color:#fff;text-align:left;text-transform:uppercase;font-size:9px;letter-spacing:.8px}.userList th,.userList td{padding:14px;border-bottom:1px solid var(--line)}.userList td button{border:0;background:#f8e0dc;color:var(--maroon);padding:7px 10px;cursor:pointer}.userRole{display:inline-block;border-radius:20px;padding:6px 10px;background:#eadff2;color:#5e286e;font-size:9px;font-weight:800;text-transform:uppercase}.userRole.admin{background:#fff1d7;color:var(--maroon)}.userSecurityNote{margin:16px 0 0;color:var(--muted);font-size:10px;line-height:1.5}@media(max-width:900px){.userManagementGrid{grid-template-columns:1fr}.userManagementPage .adminHeaderActions{flex-wrap:wrap}}@media print{.userManagementPage{display:none}}
