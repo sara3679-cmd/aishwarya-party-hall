@@ -2,6 +2,7 @@ import { and, asc, eq, gt, gte, lt, ne } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { bookings } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
+import { formatTimeRange12Hour } from "../../../../lib/format-time";
 
 function todayInChennai() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (conflict) {
-      return Response.json({ error: `This hall is already booked from ${conflict.startTime} to ${conflict.endTime}` }, { status: 409 });
+      return Response.json({ error: `This hall is already booked from ${formatTimeRange12Hour(conflict.startTime, conflict.endTime)}` }, { status: 409 });
     }
 
     const [booking] = await db.insert(bookings).values({

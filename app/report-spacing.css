@@ -36,6 +36,40 @@
   box-shadow: inset 5px 0 0 #7b4a91;
 }
 
+/* Make the final visible booking for each location easy to identify. */
+.bookingList article.bookingRow.padi:not(:has(~ article.bookingRow.padi)),
+.bookingReport tbody tr:has(.locationBadge.padi):not(:has(~ tr .locationBadge.padi)) {
+  background: #87090d;
+  color: #fff;
+  font-weight: 800;
+}
+.bookingList article.bookingRow.korattur:not(:has(~ article.bookingRow.korattur)),
+.bookingReport tbody tr:has(.locationBadge.korattur):not(:has(~ tr .locationBadge.korattur)) {
+  background: #5e286e;
+  color: #fff;
+  font-weight: 800;
+}
+.bookingList article.bookingRow.padi:not(:has(~ article.bookingRow.padi)) :is(b, strong, span, small, a),
+.bookingList article.bookingRow.korattur:not(:has(~ article.bookingRow.korattur)) :is(b, strong, span, small, a),
+.bookingReport tbody tr:has(.locationBadge.padi):not(:has(~ tr .locationBadge.padi)) :is(td, b, small, a),
+.bookingReport tbody tr:has(.locationBadge.korattur):not(:has(~ tr .locationBadge.korattur)) :is(td, b, small, a) {
+  color: #fff;
+  font-weight: 800;
+}
+.bookingList article.bookingRow.padi:not(:has(~ article.bookingRow.padi)),
+.bookingList article.bookingRow.korattur:not(:has(~ article.bookingRow.korattur)),
+.bookingReport tbody tr:has(.locationBadge.padi):not(:has(~ tr .locationBadge.padi)) td:first-child,
+.bookingReport tbody tr:has(.locationBadge.korattur):not(:has(~ tr .locationBadge.korattur)) td:first-child {
+  border-left-color: var(--gold);
+  box-shadow: inset 5px 0 0 var(--gold);
+}
+.bookingList article.bookingRow.padi:not(:has(~ article.bookingRow.padi)) button,
+.bookingList article.bookingRow.korattur:not(:has(~ article.bookingRow.korattur)) button,
+.bookingReport tbody tr:has(.locationBadge.padi):not(:has(~ tr .locationBadge.padi)) button,
+.bookingReport tbody tr:has(.locationBadge.korattur):not(:has(~ tr .locationBadge.korattur)) button {
+  color: var(--maroon);
+}
+
 .financialFilters{display:flex;gap:18px;background:#fff;padding:20px 24px;margin-bottom:22px;border:1px solid var(--line)}.financialFilters label{color:var(--maroon);font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase}.financialFilters input,.financialFilters select{display:block;margin-top:7px;padding:10px;border:1px solid var(--line);background:#fff}.financialCards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:25px}.financialCards article{background:#fff;padding:20px;border-top:4px solid var(--gold);display:flex;flex-direction:column;gap:8px}.financialCards small{text-transform:uppercase;color:var(--muted);font-size:8px;letter-spacing:1px}.financialCards b{font:23px Georgia,serif;color:var(--maroon)}.financialCards .profitCard{background:#edf8ef;border-color:#398050}.financialCards .profitCard b{color:#246438}.financialCards .lossCard{background:#fff0ed;border-color:#a70e13}.financialGrid{display:grid;grid-template-columns:350px 1fr;gap:25px;align-items:start}.expenseForm{position:sticky;top:20px}.financeTables{display:grid;gap:22px}.financeTable{background:#fff;padding:25px}.financeTable h2{font-size:27px;font-weight:400}.financeTable table{width:100%;min-width:700px;border-collapse:collapse;font-size:11px}.financeTable th{background:var(--maroon);color:#fff;text-align:left;text-transform:uppercase;font-size:8px;letter-spacing:.7px}.financeTable th,.financeTable td{padding:11px;border-bottom:1px solid var(--line)}.financeTable tbody tr:nth-child(even){background:#fffaf3}.financeTable td button{border:0;background:#f8e0dc;color:var(--maroon);padding:6px 9px;cursor:pointer}.financeNote{font-size:10px;color:var(--muted);margin-top:20px}@media(max-width:1050px){.financialCards{grid-template-columns:repeat(3,1fr)}.financialGrid{grid-template-columns:1fr}.expenseForm{position:static}}@media(max-width:620px){.financialFilters{flex-direction:column}.financialCards{grid-template-columns:1fr 1fr}.financialCards article:last-child{grid-column:1/-1}.financeTable{padding:18px 12px}}@media print{.financialFilters,.expenseForm,.financeTable td button,.financeNote{display:none!important}.financialGrid{display:block}.financialCards{grid-template-columns:repeat(5,1fr)}.financeTable{padding:10px 0}.financeTable table{min-width:0;font-size:8px}}
 .incomeSection{display:grid;grid-template-columns:350px 1fr;gap:25px;align-items:start;margin-top:25px}.incomeForm{border-top:4px solid #398050}.financialCards{grid-template-columns:repeat(4,1fr)}.financeActions{white-space:nowrap}.financeActions button+button{margin-left:5px}.financeActions button:first-child{background:#f8eed9;color:#7c090c}@media(max-width:1050px){.incomeSection{grid-template-columns:1fr}}@media(max-width:620px){.financialCards{grid-template-columns:1fr 1fr}}@media print{.incomeForm{display:none!important}.incomeSection{display:block}}
 .yearlyCards{grid-template-columns:repeat(5,1fr)}.monthlyProfitTable{padding:30px}.monthlyProfitTable table{min-width:1050px}.monthlyProfitTable td:not(:first-child),.monthlyProfitTable th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}.monthlyProfitTable tbody tr:nth-child(even){background:#fff8ec}.monthlyProfitTable tfoot{background:#3b0708;color:#fff}.monthlyProfitTable tfoot th{padding:15px 11px;font-size:10px}.profitAmount{color:#246438!important;font-weight:800}.lossAmount{color:#a70e13!important;font-weight:800}.monthlyProfitTable tfoot .profitAmount{color:#bce9c7!important}.monthlyProfitTable tfoot .lossAmount{color:#ffd1ca!important}@media(max-width:1050px){.yearlyCards{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.yearlyCards{grid-template-columns:1fr 1fr}.profitLossPage .adminHeaderActions{flex-wrap:wrap}.monthlyProfitTable{padding:18px 12px}}@media print{.profitLossPage .adminHeaderActions,.profitLossPage .financialFilters{display:none!important}.yearlyCards{grid-template-columns:repeat(5,1fr)}.monthlyProfitTable{padding:0}.monthlyProfitTable table{min-width:0;font-size:7px}}

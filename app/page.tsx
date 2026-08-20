@@ -75,6 +75,7 @@ export default function Home() {
           <a href="#gallery" onClick={() => setMenuOpen(false)}>Gallery</a>
           <a href="#catering" onClick={() => setMenuOpen(false)}>Catering</a>
           <a href="#facilities" onClick={() => setMenuOpen(false)}>Facilities</a>
+          <a href="#enquiry" onClick={() => setMenuOpen(false)}>Availability Calendar</a>
         </nav>
         <a className="headerCta" href="#enquiry">Book a visit <span>→</span></a>
         <button className="menuButton" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? "×" : "☰"}</button>
