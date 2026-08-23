@@ -51,6 +51,31 @@ export default function AdminPage() {
     }
   }, [staff, editing]);
 
+  useEffect(() => {
+    const confirmed = bookings.filter((booking) => booking.status === "confirmed");
+    const latestIds = new Map<string, number>();
+    for (const booking of confirmed) {
+      latestIds.set(booking.location, Math.max(latestIds.get(booking.location) ?? 0, booking.id));
+    }
+
+    const applyLatestClasses = (selector: string) => {
+      const rows = Array.from(document.querySelectorAll<HTMLElement>(selector));
+      rows.forEach((row, index) => {
+        row.classList.remove("latestSavedEntry", "latestPadi", "latestKorattur");
+        const booking = confirmed[index];
+        if (!booking || latestIds.get(booking.location) !== booking.id) return;
+        row.classList.add("latestSavedEntry", booking.location === "Padi" ? "latestPadi" : "latestKorattur");
+      });
+    };
+
+    const frame = window.requestAnimationFrame(() => {
+      applyLatestClasses(".bookingList .bookingRow");
+      applyLatestClasses(".bookingReport tbody tr");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [bookings]);
+
+
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setMessage("");
     const response = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });

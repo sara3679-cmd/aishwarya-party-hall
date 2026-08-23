@@ -21,7 +21,11 @@ export default function AvailabilityCalendar() {
   useEffect(() => {
     setLoading(true);
     fetch(`/api/availability?location=${location}&month=${monthKey(month)}`)
-      .then((response) => response.json())
+      .then(async (response) => {
+        const text = await response.text();
+        if (!response.ok) throw new Error(`Availability request failed: ${response.status}`);
+        return text ? JSON.parse(text) : { bookings: [] };
+      })
       .then((data) => setBookings(data.bookings ?? []))
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
@@ -46,12 +50,16 @@ export default function AvailabilityCalendar() {
     <div className="calendarWeek">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <span key={day}>{day}</span>)}</div>
     <div className="calendarGrid">{days.map((day, index) => day === null ? <span key={`empty-${index}`} /> : (() => {
       const date = dateString(day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const isPast = new Date(`${date}T00:00:00`) < today;
       const dateBookings = bookings.filter((booking) => booking.bookingDate === date);
       const bookingCount = dateBookings.length;
-      const singleSessionPeriod = bookingCount === 1 && Number(dateBookings[0].startTime.split(":")[0]) < 12 ? "morningSession" : "eveningSession";
+      const isMorningSession = bookingCount === 1 && Number(dateBookings[0].startTime.split(":")[0]) < 12;
+      const singleSessionPeriod = isMorningSession ? "eveningSession" : "morningSession";
       const availabilityClass = bookingCount === 0 ? "available" : bookingCount === 1 ? `booked oneSession ${singleSessionPeriod}` : "booked twoSessions";
-      const availabilityLabel = bookingCount === 0 ? "Available" : bookingCount === 1 ? `${singleSessionPeriod === "morningSession" ? "Morning" : "Evening"} booked` : `${bookingCount} sessions`;
-      return <button key={date} className={`${availabilityClass} ${selectedDate === date ? "selected" : ""}`} onClick={() => setSelectedDate(date)}><b>{day}</b><small>{availabilityLabel}</small></button>;
+      const availabilityLabel = bookingCount === 0 ? "Available" : bookingCount === 1 ? `${isMorningSession ? "Morning" : "Evening"} booked` : `${bookingCount} sessions`;
+      return <button key={date} disabled={isPast} className={`${availabilityClass} ${isPast ? "pastDate" : ""} ${selectedDate === date ? "selected" : ""}`} onClick={() => setSelectedDate(date)}><b>{day}</b><small>{isPast ? "Past" : availabilityLabel}</small></button>;
     })())}</div>
     <div className="availabilityResult">{loading ? <p>Checking bookings…</p> : selectedDate ? <><b>{new Date(`${selectedDate}T00:00:00`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</b>{selectedBookings.length ? selectedBookings.map((booking) => <p key={booking.id}><span className="statusDot bookedDot" /> Booked: {formatTimeRange12Hour(booking.startTime, booking.endTime)}</p>) : <p><span className="statusDot availableDot" /> No bookings — please call to reserve this date.</p>}</> : <p>Select a date to see its booked times.</p>}</div>
   </div>;
