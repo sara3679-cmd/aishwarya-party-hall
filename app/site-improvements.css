@@ -1,0 +1,44 @@
+.locationBody .venueAddress { display: flex; align-items: flex-start; gap: 13px; margin: -4px 0 24px; padding: 15px 17px; background: #f8efe1; border-left: 3px solid var(--gold); color: var(--muted); font: normal 13px/1.55 Arial, sans-serif; }
+.venueAddress .addressPin { flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--maroon); color: var(--gold-light); font-size: 7px; margin-top: 2px; }
+.venueAddress b { display: block; margin-bottom: 4px; color: var(--maroon); font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; }
+.planning { display: grid; grid-template-columns: .85fr 1.15fr; gap: 9vw; background: var(--ivory); align-items: start; }
+.planning > div > p:not(.kicker) { font: 16px/1.75 Georgia, serif; color: var(--muted); margin-bottom: 28px; }
+.faqList { border-top: 1px solid var(--line); }
+.faqList details { border-bottom: 1px solid var(--line); padding: 22px 0; }
+.faqList summary { cursor: pointer; color: var(--maroon); font: 20px Georgia, serif; }
+.faqList p { margin: 14px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.footerLinks address { min-height: 42px; margin: 0 0 4px; font: normal 12px/1.65 Arial, sans-serif; color: #d8bfae; max-width: 300px; }
+.footerLinks .adminFooterLink { width: fit-content; margin-top: 9px; padding: 10px 14px; border: 1px solid rgba(255,255,255,.35); color: var(--gold-light); font-weight: 700; }
+.footerLinks .adminFooterLink:hover { background: var(--gold); border-color: var(--gold); color: var(--deep); }
+/* Clear any latest-entry class retained by an older browser session. */
+.bookingList article.bookingRow.latestRecord.padi,
+.bookingList article.bookingRow.latestRecord.korattur { background: #fff !important; border-left-color: transparent !important; box-shadow: none !important; color: var(--ink) !important; }
+.bookingList article.bookingRow.latestRecord * { color: inherit !important; font-weight: revert !important; }
+.bookingList article.bookingRow.latestRecord::before { display: none !important; content: none !important; }
+.bookingReport tbody tr.latestRecord { background: #fff !important; box-shadow: none !important; color: var(--ink) !important; }
+.bookingReport tbody tr.latestRecord td,
+.bookingReport tbody tr.latestRecord td * { color: revert !important; font-weight: revert; }
+.bookingList article.latestSavedEntry.latestPadi,
+.bookingReport tbody tr.latestSavedEntry.latestPadi { background: #ffe1a6 !important; color: var(--ink) !important; box-shadow: inset 6px 0 0 #c98200 !important; }
+.bookingList article.latestSavedEntry.latestKorattur,
+.bookingReport tbody tr.latestSavedEntry.latestKorattur { background: #ddc7ef !important; color: var(--ink) !important; box-shadow: inset 6px 0 0 #713c89 !important; }
+.bookingList article.latestSavedEntry *,
+.bookingReport tbody tr.latestSavedEntry td,
+.bookingReport tbody tr.latestSavedEntry td * { color: var(--ink) !important; font-weight: 800; }
+.bookingList article.latestSavedEntry::before { content: "LATEST SAVED ENTRY"; grid-column: 1 / -1; width: fit-content; margin-bottom: -8px; color: var(--maroon); font-size: 8px; font-weight: 900; letter-spacing: 1.3px; }
+.bookingReport tbody tr.latestSavedEntry .locationBadge { background: #fff !important; color: var(--maroon) !important; }
+.floatingActions { position: fixed; right: 22px; bottom: 22px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.whatsappButton, .availabilityButton { color: #fff; padding: 14px 19px; border-radius: 999px; box-shadow: 0 8px 25px rgba(0,0,0,.24); font-size: 12px; font-weight: 800; letter-spacing: .3px; }
+.whatsappButton { background: #1f9d55; }
+.availabilityButton { background: var(--maroon); border: 1px solid var(--gold); }
+.whatsappButton:hover, .availabilityButton:hover { transform: translateY(-1px); }
+.calendarGrid button:disabled.pastDate { background: #f2eee9; border-color: #e2d9d1; color: #9a908a; cursor: not-allowed; opacity: .7; }
+.calendarGrid button:disabled.pastDate small { color: #9a908a; }
+.legalPage { min-height: 100vh; max-width: 850px; margin: auto; padding: 80px 28px; background: var(--ivory); }
+.legalPage > a { display: inline-block; margin-bottom: 70px; color: var(--maroon); font-weight: 700; }
+.legalPage h1 { font: clamp(44px,7vw,76px)/1 Georgia,serif; color: var(--maroon); }
+.legalPage h2 { font-size: 28px; letter-spacing: 0; margin-top: 42px; }
+.legalPage p { font: 17px/1.75 Georgia,serif; color: var(--muted); }
+.legalPage p a { color: var(--maroon); font-weight: 700; }
+@media(max-width: 900px) { .planning { grid-template-columns: 1fr; gap: 50px; } }
+@media(max-width: 620px) { .floatingActions { right: 14px; bottom: 14px; } .whatsappButton, .availabilityButton { padding: 12px 16px; font-size: 11px; } .legalPage { padding: 50px 22px; } .legalPage > a { margin-bottom: 45px; } }
