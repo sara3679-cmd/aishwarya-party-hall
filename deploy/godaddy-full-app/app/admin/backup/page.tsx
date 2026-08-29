@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 
-type BackupSummary = { fileName: string; exportedAt: string; bookings: number; expenses: number; additionalIncome: number; staffUsers: number };
+type BackupSummary = { fileName: string; exportedAt: string; bookings: number; expenses: number; additionalIncome: number; staffUsers: number; orderAdditions: number | null };
 
 export default function DatabaseBackupPage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
@@ -20,10 +20,10 @@ export default function DatabaseBackupPage() {
     try {
       const parsed = JSON.parse(await file.text()) as Record<string, unknown>;
       const data = parsed.data as Record<string, unknown> | undefined;
-      if (parsed.format !== "aishwarya-party-hall-backup" || parsed.version !== 1 || !data) throw new Error("Invalid backup");
+      if (parsed.format !== "aishwarya-party-hall-backup" || ![1, 2].includes(Number(parsed.version)) || !data) throw new Error("Invalid backup");
       const count = (key: string) => Array.isArray(data[key]) ? data[key].length : 0;
       setBackup(parsed);
-      setSummary({ fileName: file.name, exportedAt: String(parsed.exportedAt || "Not recorded"), bookings: count("bookings"), expenses: count("expenses"), additionalIncome: count("additionalIncome"), staffUsers: count("staffUsers") });
+      setSummary({ fileName: file.name, exportedAt: String(parsed.exportedAt || "Not recorded"), bookings: count("bookings"), expenses: count("expenses"), additionalIncome: count("additionalIncome"), staffUsers: count("staffUsers"), orderAdditions: Number(parsed.version) === 2 ? count("orderAdditions") : null });
     } catch { setMessage("Please select a valid Aishwarya Party Hall JSON backup file."); }
   }
 
@@ -35,10 +35,10 @@ export default function DatabaseBackupPage() {
     const data = await response.json();
     setImporting(false);
     if (!response.ok) { setMessage(data.error || "Unable to restore the backup"); return; }
-    setMessage(`Backup restored: ${data.counts.bookings} bookings, ${data.counts.expenses} expenses, ${data.counts.additionalIncome} income records and ${data.counts.staffUsers} users.`);
+    setMessage(`Backup restored: ${data.counts.bookings} bookings, ${data.counts.expenses} expenses, ${data.counts.additionalIncome} income records, ${data.counts.staffUsers} users${data.counts.orderAdditions === null ? ". Existing SS Foods orders were preserved because this is an older backup." : ` and ${data.counts.orderAdditions} SS Foods addition items.`}`);
   }
 
   if (authorized === null) return <main className="adminPage"><p>Checking administrator access…</p></main>;
   if (!authorized) return <main className="adminPage loginPage"><div className="adminLogin"><h1>Administrator only</h1><p>Please sign in with an administrator account.</p><a href="/admin">← Go to admin login</a></div></main>;
-  return <main className="adminPage backupPage"><header className="adminHeader"><div><p className="kicker">Database tools</p><h1>Import & Export</h1><p className="staffRole">Download a complete backup or restore data from a previous backup.</p></div><div className="adminHeaderActions"><a href="/admin">Booking manager</a></div></header><section className="backupGrid"><article className="backupCard"><span className="backupNumber">01</span><h2>Export database</h2><p>Downloads bookings, expenses, commission income and database user accounts in one JSON backup file.</p><a className="backupButton" href="/api/admin/backup" download>Export backup</a><small>Keep this file private because it contains customer and account information.</small></article><article className="backupCard"><span className="backupNumber">02</span><h2>Import database</h2><p>Select a backup exported from this application. Importing replaces the current database.</p><label className="backupFile">Choose backup file<input type="file" accept="application/json,.json" onChange={selectBackup} /></label>{summary && <div className="backupSummary"><b>{summary.fileName}</b><span>Created: {summary.exportedAt}</span><span>{summary.bookings} bookings · {summary.expenses} expenses</span><span>{summary.additionalIncome} income records · {summary.staffUsers} users</span></div>}<button className="backupButton danger" disabled={!backup || importing} onClick={importBackup}>{importing ? "Restoring…" : "Restore backup"}</button></article></section>{message && <p className="adminMessage backupMessage">{message}</p>}</main>;
+  return <main className="adminPage backupPage"><header className="adminHeader"><div><p className="kicker">Database tools</p><h1>Import & Export</h1><p className="staffRole">Download a complete backup or restore data from a previous backup.</p></div><div className="adminHeaderActions"><a href="/admin">Booking manager</a></div></header><section className="backupGrid"><article className="backupCard"><span className="backupNumber">01</span><h2>Export database</h2><p>Downloads hall bookings, expenses, income, staff users and all SS Foods addition orders in one JSON backup file.</p><a className="backupButton" href="/api/admin/backup" download>Export backup</a><small>Keep this file private because it contains customer and account information.</small></article><article className="backupCard"><span className="backupNumber">02</span><h2>Import database</h2><p>Select a backup exported from this application. Importing replaces the included database records.</p><label className="backupFile">Choose backup file<input type="file" accept="application/json,.json" onChange={selectBackup} /></label>{summary && <div className="backupSummary"><b>{summary.fileName}</b><span>Created: {summary.exportedAt}</span><span>{summary.bookings} bookings · {summary.expenses} expenses</span><span>{summary.additionalIncome} income records · {summary.staffUsers} users</span><span>{summary.orderAdditions === null ? "Older backup · current SS Foods orders will be preserved" : `${summary.orderAdditions} SS Foods addition items`}</span></div>}<button className="backupButton danger" disabled={!backup || importing} onClick={importBackup}>{importing ? "Restoring…" : "Restore backup"}</button></article></section>{message && <p className="adminMessage backupMessage">{message}</p>}</main>;
 }
