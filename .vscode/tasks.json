@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GoDaddy: Save Token Securely",
+      "type": "shell",
+      "command": "bash scripts/save-godaddy-token.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "GoDaddy: Publish Live (one click)",
+      "type": "shell",
+      "command": "npm run deploy:godaddy",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "GoDaddy: Upload Preview Only",
+      "type": "shell",
+      "command": "npm run deploy:godaddy:preview",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}

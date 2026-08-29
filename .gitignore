@@ -39,3 +39,23 @@ yarn-error.log*
 /outputs/
 /work/
 ~$*.xlsx
+
+# local databases, backups, and generated deployment archives
+/backups/
+/deploy/*.zip
+/deploy/*.sql
+/deploy/**/database/
+/deploy/godaddy-full-app/node_modules/
+/aishwarya-public-site.zip
+*.sqlite
+*.sqlite3
+*.db
+
+# generated TypeScript build state
+*.tsbuildinfo
+
+# nested build output (including the GoDaddy application copy)
+**/.next/
+**/.vinext/
+**/dist/
+**/.wrangler/

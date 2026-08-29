@@ -1,0 +1,11 @@
+{
+  "name": "aishwarya-database-restore",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=22.0.0" },
+  "scripts": {
+    "build": "node -e \"console.log('Restore package ready')\"",
+    "start": "node server.js"
+  },
+  "dependencies": { "mysql2": "3.15.3" }
+}

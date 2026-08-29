@@ -35,6 +35,7 @@ export const expenses = sqliteTable(
   "expenses",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
+    orderId: text("order_id").notNull().default(""),
     expenseDate: text("expense_date").notNull(),
     location: text("location", { enum: ["Padi", "Korattur", "General"] }).notNull(),
     category: text("category").notNull(),
@@ -70,4 +71,35 @@ export const staffUsers = sqliteTable(
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [uniqueIndex("staff_users_username_idx").on(table.username)],
+);
+
+export const orderAdditions = sqliteTable(
+  "order_additions_v5",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    orderId: text("order_id").notNull(),
+    customerName: text("customer_name").notNull().default(""),
+    mobileNo: text("mobile_no").notNull().default(""),
+    functionName: text("function_name").notNull().default(""),
+    customerAddress: text("customer_address").notNull().default(""),
+    venue: text("venue").notNull().default(""),
+    billDate: text("bill_date").notNull().default(""),
+    functionDate: text("function_date").notNull(),
+    functionTime: text("function_time").notNull(),
+    mealSession: text("meal_session", { enum: ["Breakfast", "Lunch", "Dinner"] }).notNull(),
+    foodType: text("food_type", { enum: ["Veg", "Non-Veg"] }).notNull(),
+    itemName: text("item_name").notNull(),
+    originalQty: integer("original_qty").notNull().default(0),
+    unit: text("unit").notNull(),
+    rate: integer("rate").notNull(),
+    discount: integer("discount").notNull().default(0),
+    discountQty: integer("discount_qty").notNull().default(0),
+    discountRate: integer("discount_rate").notNull().default(0),
+    advanceEntries: text("advance_entries").notNull().default("[]"),
+    advanceTotal: integer("advance_total").notNull().default(0),
+    remarks: text("remarks").notNull().default(""),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [index("order_additions_order_date_idx").on(table.orderId, table.functionDate)],
 );

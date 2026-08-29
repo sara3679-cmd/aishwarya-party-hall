@@ -1,0 +1,3 @@
+.expenseSummary .orderProfit{background:#176b45}.expenseSummary .orderLoss{background:#9f1b1f}.expenseSummary .orderProfit small,.expenseSummary .orderProfit b,.expenseSummary .orderLoss small,.expenseSummary .orderLoss b{color:#fff}
+.cateringExpenseForm .formRow label:nth-child(2){display:none}.cateringExpenseForm .formRow{grid-template-columns:1fr}.expenseRegister th:nth-child(3),.expenseRegister td:nth-child(3){display:none}
+.expenseSummary:has(.orderProfit,.orderLoss) article:nth-child(n+4){display:none}.expenseSummary:not(:has(.orderProfit,.orderLoss)) article:nth-child(n+2){display:none}

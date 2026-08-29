@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, lte, or } from "drizzle-orm";
-import { getDb } from "../../../../db";
+import { ensureExpenseOrderColumn, getDb } from "../../../../db";
 import { additionalIncome, bookings, expenses } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
 
@@ -10,6 +10,7 @@ async function requireAdmin(request: Request) {
 
 export async function GET(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
+  await ensureExpenseOrderColumn();
   const url = new URL(request.url);
   const from = url.searchParams.get("from") ?? "2000-01-01";
   const to = url.searchParams.get("to") ?? "2999-12-31";
@@ -29,14 +30,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
+  await ensureExpenseOrderColumn();
   const payload = await request.json() as Record<string, string>;
+  const orderId = payload.orderId?.trim() ?? "";
   const expenseDate = payload.expenseDate?.trim();
   const location = payload.location?.trim();
   const category = payload.category?.trim();
   const description = payload.description?.trim();
   const amount = Number(payload.amount);
   if (!expenseDate || !location || !["Padi", "Korattur", "General"].includes(location) || !category || !description || !Number.isFinite(amount) || amount <= 0) return Response.json({ error: "Complete all valid expense details" }, { status: 400 });
-  const [expense] = await getDb().insert(expenses).values({ expenseDate, location: location as "Padi" | "Korattur" | "General", category, description, amount: Math.round(amount) }).returning();
+  const [expense] = await getDb().insert(expenses).values({ orderId, expenseDate, location: location as "Padi" | "Korattur" | "General", category, description, amount: Math.round(amount) }).returning();
   return Response.json({ expense }, { status: 201 });
 }
 
