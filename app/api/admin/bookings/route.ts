@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return Response.json({ error: `This hall is already booked from ${formatTimeRange12Hour(conflict.startTime, conflict.endTime)}` }, { status: 409 });
     }
 
-    const result = await db.insert(bookings).values({
+    const bookingValues = {
       location: location as "Padi" | "Korattur",
       bookingDate,
       startTime,
@@ -82,8 +82,34 @@ export async function POST(request: Request) {
       mobile,
       amount: Math.round(amount),
       advanceReceived: Math.round(advanceReceived),
-    });
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, Number(result[0].insertId))).limit(1);
+      status: "confirmed" as const,
+    };
+
+    // A deleted booking is retained as "cancelled" for reporting. The database
+    // also has a unique exact-slot index, so reuse that cancelled record when
+    // the same date and time are booked again instead of triggering a duplicate
+    // key error.
+    const [cancelledExactSlot] = await db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(and(
+        eq(bookings.location, location as "Padi" | "Korattur"),
+        eq(bookings.bookingDate, bookingDate),
+        eq(bookings.startTime, startTime),
+        eq(bookings.endTime, endTime),
+        eq(bookings.status, "cancelled"),
+      ))
+      .limit(1);
+
+    let bookingId: number;
+    if (cancelledExactSlot) {
+      bookingId = cancelledExactSlot.id;
+      await db.update(bookings).set(bookingValues).where(eq(bookings.id, bookingId));
+    } else {
+      const result = await db.insert(bookings).values(bookingValues);
+      bookingId = Number(result[0].insertId);
+    }
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
 
     return Response.json({ booking }, { status: 201 });
   } catch (error) {
