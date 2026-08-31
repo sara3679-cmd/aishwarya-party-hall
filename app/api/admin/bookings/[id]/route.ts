@@ -76,6 +76,11 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   )).limit(1);
   if (conflict) return Response.json({ error: "The edited date and time overlap another booking" }, { status: 409 });
 
+  const [cancelledExactSlot] = await db.select({ id: bookings.id }).from(bookings).where(and(
+    eq(bookings.location, location as "Padi" | "Korattur"), eq(bookings.bookingDate, bookingDate), eq(bookings.startTime, startTime), eq(bookings.endTime, endTime), ne(bookings.id, bookingId), eq(bookings.status, "cancelled"),
+  )).limit(1);
+  if (cancelledExactSlot) await db.delete(bookings).where(eq(bookings.id, cancelledExactSlot.id));
+
   await db.update(bookings).set({ location: location as "Padi" | "Korattur", bookingDate, startTime, endTime, billNo, functionName, customerName, mobile, amount: Math.round(amount), advanceReceived: Math.round(advanceReceived) }).where(eq(bookings.id, bookingId));
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   return Response.json({ booking });
