@@ -9,6 +9,12 @@ type Booking = { id: number; location: string; bookingDate: string; startTime: s
 type Staff = { username: string; role: "admin" | "viewer" };
 const functionNames = ["Birthday Party", "Engagement", "Baby Shower", "Naming Ceremony", "Ear Boring", "Puberty", "Betrothal", "Wedding Reception", "Get Together", "Seminar / Training", "Corporate Event", "Small Exhibition", "Other Function"];
 
+async function readJson(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text();
+  if (!text) return {};
+  try { return JSON.parse(text) as Record<string, unknown>; } catch { return {}; }
+}
+
 export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [message, setMessage] = useState("");
@@ -105,12 +111,17 @@ export default function AdminPage() {
     setSaving(true); setMessage("");
     const form = event.currentTarget;
     const payload = Object.fromEntries(new FormData(form));
-    const response = await fetch(editing ? `/api/admin/bookings/${editing.id}` : "/api/admin/bookings", { method: editing ? "PUT" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-    const data = await response.json();
-    setSaving(false);
-    if (!response.ok) { setMessage(data.error ?? "Unable to save booking"); return; }
-    openWhatsAppReport(editing ? "BOOKING UPDATED" : "NEW BOOKING", data.booking as Booking);
-    form.reset(); setEditing(null); setMessage(editing ? "Booking updated. WhatsApp report opened." : "Booking saved. WhatsApp report opened."); load();
+    try {
+      const response = await fetch(editing ? `/api/admin/bookings/${editing.id}` : "/api/admin/bookings", { method: editing ? "PUT" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await readJson(response);
+      if (!response.ok || !data.booking) { setMessage(typeof data.error === "string" ? data.error : "Unable to save booking. Please try again."); return; }
+      openWhatsAppReport(editing ? "BOOKING UPDATED" : "NEW BOOKING", data.booking as Booking);
+      form.reset(); setEditing(null); setMessage(editing ? "Booking updated. WhatsApp report opened." : "Booking saved. WhatsApp report opened."); load();
+    } catch {
+      setMessage("Unable to contact the booking service. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function cancel(booking: Booking) {
