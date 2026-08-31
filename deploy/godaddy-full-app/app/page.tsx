@@ -20,7 +20,6 @@ const galleries = {
     ["/images/padi/decor-stage-2.jpg", "First birthday stage decor"],
     ["/images/padi/decor-stage-3.jpg", "Birthday event setup"],
     ["/images/padi/birthday-entrance.jpg", "Decorated party entrance"],
-    ["/images/padi/mini-hall-entrance-2.jpg", "Sri Annai Mini Hall entrance"],
     ["/images/padi/seating-2.jpg", "Formal guest seating"],
     ["/images/padi/dining-2.jpg", "Dining hall"],
     ["/images/padi/dining-3.jpg", "Traditional banana leaf dining"],
@@ -77,6 +76,7 @@ export default function Home() {
           <a href="/catering" onClick={() => setMenuOpen(false)}>Catering – SS Foods</a>
           <a href="#facilities" onClick={() => setMenuOpen(false)}>Facilities</a>
           <a href="#enquiry" onClick={() => setMenuOpen(false)}>Availability Calendar</a>
+          <a href="/admin" onClick={() => setMenuOpen(false)}>Admin</a>
         </nav>
         <a className="headerCta" href="#enquiry">Book a visit <span>→</span></a>
         <button className="menuButton" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? "×" : "☰"}</button>
@@ -102,7 +102,7 @@ export default function Home() {
       <section className="locations sectionPad" id="locations">
         <div className="sectionTitle"><div><p className="kicker light">Our locations</p><h2>Find your perfect<br/><em>celebration space.</em></h2></div><p>Both venues are ready for intimate functions, family celebrations and professional gatherings.</p></div>
         <div className="locationCards">
-          <article className="locationCard"><div className="locationPhoto"><img src="/images/padi/exterior.jpg" alt="Aishwarya Party Hall Padi exterior"/><span>PADI</span></div><div className="locationBody"><p className="cardLabel">Aishwarya Party Hall · Padi</p><h3>A warm, intimate hall<br/>for meaningful occasions.</h3><address className="venueAddress"><span className="addressPin" aria-hidden="true">●</span><span><b>Visit us in Padi</b>No. 11, Elango Nagar Main Road<br/>Officers Colony, Chennai – 600050</span></address><ul><li>Air-conditioned hall</li><li>Stage & separate dining</li><li>Music system & power backup</li><li>Sri Annai Mini Hall</li></ul><div className="contactButtons"><a href="tel:+919884806618">Call 98848 06618</a><a href={MAPS.Padi} target="_blank" rel="noreferrer">Directions & reviews ↗</a></div><p className="secondPhone">Alternate: <a href="tel:+919884806629">98848 06629</a></p></div></article>
+          <article className="locationCard"><div className="locationPhoto"><img src="/images/padi/exterior.jpg" alt="Aishwarya Party Hall Padi exterior"/><span>PADI</span></div><div className="locationBody"><p className="cardLabel">Aishwarya Party Hall · Padi</p><h3>A warm, intimate hall<br/>for meaningful occasions.</h3><address className="venueAddress"><span className="addressPin" aria-hidden="true">●</span><span><b>Visit us in Padi</b>No. 11, Elango Nagar Main Road<br/>Officers Colony, Chennai – 600050</span></address><ul><li>Air-conditioned hall</li><li>Stage & separate dining</li><li>Music system & power backup</li></ul><div className="contactButtons"><a href="tel:+919884806618">Call 98848 06618</a><a href={MAPS.Padi} target="_blank" rel="noreferrer">Directions & reviews ↗</a></div><p className="secondPhone">Alternate: <a href="tel:+919884806629">98848 06629</a></p></div></article>
           <article className="locationCard"><div className="locationPhoto"><img src="/images/korattur/exterior-1.jpg" alt="Aishwarya Party Hall Korattur exterior"/><span>KORATTUR</span></div><div className="locationBody"><p className="cardLabel">Aishwarya Party Hall · Korattur</p><h3>A spacious modern venue<br/>with convenient facilities.</h3><address className="venueAddress"><span className="addressPin" aria-hidden="true">●</span><span><b>Visit us in Korattur</b>322, Station Road<br/>Korattur, Chennai – 600080</span></address><ul><li>Air-conditioned main hall</li><li>Lift facility</li><li>Stage & dining area</li><li>Covered parking</li></ul><div className="contactButtons"><a href="tel:+919884806618">Call 98848 06618</a><a href={MAPS.Korattur} target="_blank" rel="noreferrer">Directions & reviews ↗</a></div><p className="secondPhone">Alternate: <a href="tel:+919884806608">98848 06608</a></p></div></article>
         </div>
       </section>
@@ -118,7 +118,7 @@ export default function Home() {
       </section>
 
       <section className="catering sectionPad" id="catering">
-        <div className="cateringVisual"><img src="/images/brand/ssfoods-logo.jpg" alt="SS Foods Catering Service logo"/><div className="plate plateOne"/><div className="plate plateTwo"/></div>
+        <div className="cateringVisual"><img src="/images/brand/ssfoods-logo-official.jpg" alt="SS Foods Catering Service logo"/><div className="plate plateOne"/><div className="plate plateTwo"/></div>
         <div className="cateringCopy"><p className="kicker">Our catering partner</p><h2>Good food.<br/><em>Great memories.</em></h2><p>SS Foods Catering Service brings generous hospitality to your table with freshly prepared vegetarian and non-vegetarian menus for every kind of celebration.</p><div className="foodTypes"><span><b>VEG</b>Traditional favourites & custom menus</span><span><b>NON-VEG</b>Flavourful dishes made for your occasion</span></div><a className="maroonButton" href="/catering">Explore SS Foods Catering <span>→</span></a></div>
       </section>
 

@@ -1,6 +1,6 @@
 import { and, asc, eq, gte, lt } from "drizzle-orm";
-import { getDb } from "../../../../db";
-import { bookings } from "../../../../db/schema";
+import { ensureExpenseOrderColumn, getDb } from "../../../../db";
+import { additionalIncome, bookings, expenses } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
 
 export async function GET(request: Request) {
@@ -20,6 +20,25 @@ export async function GET(request: Request) {
     conditions.push(gte(bookings.bookingDate, start), lt(bookings.bookingDate, end));
   }
   if (["Padi", "Korattur"].includes(location)) conditions.push(eq(bookings.location, location as "Padi" | "Korattur"));
-  const rows = await getDb().select().from(bookings).where(and(...conditions)).orderBy(asc(bookings.bookingDate), asc(bookings.startTime));
-  return Response.json({ bookings: rows, role: staff.role });
+  const db = getDb();
+  const rows = await db.select().from(bookings).where(and(...conditions)).orderBy(asc(bookings.bookingDate), asc(bookings.startTime));
+  const expenseTotals = new Map<number, number>();
+  const commissionTotals = new Map<number, number>();
+  if (staff.role === "admin") {
+    await ensureExpenseOrderColumn();
+    const expenseRows = await db.select().from(expenses);
+    for (const expense of expenseRows) {
+      const direct = /^BOOKING-(\d+)$/.exec(expense.orderId || "");
+      const legacy = /Booking ID\s+(\d+)/i.exec(expense.description);
+      const bookingId = Number(direct?.[1] || legacy?.[1]);
+      if (Number.isInteger(bookingId)) expenseTotals.set(bookingId, (expenseTotals.get(bookingId) || 0) + expense.amount);
+    }
+    const incomeRows = await db.select().from(additionalIncome);
+    for (const income of incomeRows) {
+      const match = /Booking ID\s+(\d+)/i.exec(income.description);
+      const bookingId = Number(match?.[1]);
+      if (Number.isInteger(bookingId)) commissionTotals.set(bookingId, (commissionTotals.get(bookingId) || 0) + income.amount);
+    }
+  }
+  return Response.json({ bookings: rows.map((row) => ({ ...row, expenseAmount: expenseTotals.get(row.id) || 0, commissionAmount: commissionTotals.get(row.id) || 0 })), role: staff.role });
 }

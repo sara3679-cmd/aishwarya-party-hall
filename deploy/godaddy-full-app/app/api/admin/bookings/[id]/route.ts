@@ -11,6 +11,18 @@ function titleCase(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-IN").replace(/(^|\s)\p{L}/gu, (letter) => letter.toLocaleUpperCase("en-IN"));
 }
 
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const staff = await getStaffSession(request);
+  if (!staff) return Response.json({ error: "Please sign in" }, { status: 401 });
+  if (staff.role !== "admin") return Response.json({ error: "Administrator access required" }, { status: 403 });
+  const { id } = await context.params;
+  const bookingId = Number(id);
+  if (!Number.isInteger(bookingId)) return Response.json({ error: "Invalid booking" }, { status: 400 });
+  const [booking] = await getDb().select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  if (!booking) return Response.json({ error: "Booking not found" }, { status: 404 });
+  return Response.json({ booking });
+}
+
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const staff = await getStaffSession(request);
   if (!staff) return Response.json({ error: "Please sign in" }, { status: 401 });
@@ -20,6 +32,20 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   if (!Number.isInteger(bookingId)) return Response.json({ error: "Invalid booking" }, { status: 400 });
   await getDb().update(bookings).set({ status: "cancelled" }).where(eq(bookings.id, bookingId));
   return Response.json({ ok: true });
+}
+
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const staff = await getStaffSession(request);
+  if (!staff) return Response.json({ error: "Please sign in" }, { status: 401 });
+  if (staff.role !== "admin") return Response.json({ error: "Administrator access required" }, { status: 403 });
+  const { id } = await context.params;
+  const bookingId = Number(id);
+  if (!Number.isInteger(bookingId)) return Response.json({ error: "Invalid booking" }, { status: 400 });
+  const [current] = await getDb().select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  if (!current) return Response.json({ error: "Booking not found" }, { status: 404 });
+  await getDb().update(bookings).set({ advanceReceived: current.amount }).where(eq(bookings.id, bookingId));
+  const [booking] = await getDb().select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  return Response.json({ booking });
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -41,7 +67,6 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const advanceReceived = Number(payload.advanceReceived ?? 0);
   if (!Number.isInteger(bookingId) || !location || !["Padi", "Korattur"].includes(location) || !bookingDate || !startTime || !endTime || !billNo || !functionName || !customerName || !mobile) return Response.json({ error: "Complete all booking details" }, { status: 400 });
   if (startTime >= endTime) return Response.json({ error: "End time must be after start time" }, { status: 400 });
-  if (bookingDate < todayInChennai()) return Response.json({ error: "Past dates cannot be booked" }, { status: 400 });
   if (!/^\+?[0-9]{10,13}$/.test(mobile)) return Response.json({ error: "Enter a valid mobile number" }, { status: 400 });
   if (!Number.isFinite(amount) || !Number.isFinite(advanceReceived) || amount < 0 || advanceReceived < 0 || advanceReceived > amount) return Response.json({ error: "Enter valid amount and advance details" }, { status: 400 });
 

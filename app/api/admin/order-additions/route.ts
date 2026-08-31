@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { asc, desc } from "drizzle-orm";
 import { ensureOrderAdditionsTable, getDb } from "../../../../db";
 import { orderAdditions } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   if (!staff) return Response.json({ error: "Staff access required" }, { status: 403 });
   try {
     await ensureOrderAdditionsTable();
-    const additions = await getDb().select().from(orderAdditions).orderBy(desc(orderAdditions.functionDate), desc(orderAdditions.id));
+    const additions = await getDb().select().from(orderAdditions).orderBy(desc(orderAdditions.functionDate), asc(orderAdditions.id));
     const highestOrder = additions.reduce((highest, item) => Math.max(highest, Number(item.orderId.match(/^SS-(\d+)$/)?.[1] ?? 0)), 0);
     return Response.json({ additions, role: staff.role, nextOrderId: `SS-${String(highestOrder + 1).padStart(3, "0")}` });
   } catch (error) {

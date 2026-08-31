@@ -1,0 +1,49 @@
+.bookingActions .receivedButton {
+  background: #2f7d48;
+  color: #fff;
+}
+
+.bookingActions .receivedButton:hover {
+  background: #235f37;
+}
+
+.bookingActions .expenseButton {
+  background: #9a5b13;
+  color: #fff;
+}
+
+.bookingActions .expenseButton:hover {
+  background: #75440c;
+}
+
+.bookingReportActions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.bookingReportActions button,
+.bookingReportActions a {
+  border: 0;
+  border-radius: 4px;
+  padding: 9px 12px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.bookingReportActions .receivedButton { background: #2f7d48; }
+.bookingReportActions .incomeButton { background: #286c8f; }
+.bookingReportActions .expenseButton { background: #9a5b13; }
+.bookingReportActions .editButton { background: #2f7d48; }
+.bookingReportActions .deleteButton { background: #a20b0f; }
+.bookingReportActions button:disabled { opacity: .55; cursor: wait; }
+
+.bookingMonthGroup td.bookingProfit { color: #247245; font-weight: 800; }
+.bookingMonthGroup td.bookingLoss { color: #a20b0f; font-weight: 800; }
+
+@media print {
+  .bookingReportActions, .bookingActionsColumn { display: none !important; }
+}

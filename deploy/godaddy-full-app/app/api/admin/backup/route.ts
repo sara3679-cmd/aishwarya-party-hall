@@ -78,16 +78,28 @@ export async function POST(request: Request) {
     return Response.json({ error: "The selected file is not valid JSON" }, { status: 400 });
   }
   if (!validateBackup(payload)) return Response.json({ error: "This is not a valid Aishwarya Party Hall database backup" }, { status: 400 });
-  const db = getDb();
-  await db.delete(bookings);
-  await db.delete(expenses);
-  await db.delete(additionalIncome);
-  await db.delete(staffUsers);
-  if (payload.version === 2) await db.delete(orderAdditions);
-  for (const row of payload.data.bookings) await db.insert(bookings).values(row);
-  for (const row of payload.data.expenses) await db.insert(expenses).values(row);
-  for (const row of payload.data.additionalIncome) await db.insert(additionalIncome).values(row);
-  for (const row of payload.data.staffUsers) await db.insert(staffUsers).values(row);
-  if (payload.version === 2) for (const row of payload.data.orderAdditions || []) await db.insert(orderAdditions).values(row);
-  return Response.json({ success: true, counts: { bookings: payload.data.bookings.length, expenses: payload.data.expenses.length, additionalIncome: payload.data.additionalIncome.length, staffUsers: payload.data.staffUsers.length, orderAdditions: payload.version === 2 ? (payload.data.orderAdditions || []).length : null } });
+  const additionRows = (payload.data.orderAdditions || []).map((row) => {
+    let advanceEntries: unknown = row.advanceEntries ?? [];
+    if (typeof advanceEntries === "string") {
+      try { advanceEntries = JSON.parse(advanceEntries); } catch { advanceEntries = []; }
+    }
+    return { ...row, advanceEntries };
+  });
+  try {
+    const db = getDb();
+    await db.delete(bookings);
+    await db.delete(expenses);
+    await db.delete(additionalIncome);
+    await db.delete(staffUsers);
+    if (payload.version === 2) await db.delete(orderAdditions);
+    for (const row of payload.data.bookings) await db.insert(bookings).values(row);
+    for (const row of payload.data.expenses) await db.insert(expenses).values(row);
+    for (const row of payload.data.additionalIncome) await db.insert(additionalIncome).values(row);
+    for (const row of payload.data.staffUsers) await db.insert(staffUsers).values(row);
+    if (payload.version === 2) for (const row of additionRows) await db.insert(orderAdditions).values(row);
+    return Response.json({ success: true, counts: { bookings: payload.data.bookings.length, expenses: payload.data.expenses.length, additionalIncome: payload.data.additionalIncome.length, staffUsers: payload.data.staffUsers.length, orderAdditions: payload.version === 2 ? additionRows.length : null } });
+  } catch (error) {
+    console.error("Backup restore failed", error);
+    return Response.json({ error: "The restore stopped because of a database error. Please retry with the same backup file." }, { status: 500 });
+  }
 }

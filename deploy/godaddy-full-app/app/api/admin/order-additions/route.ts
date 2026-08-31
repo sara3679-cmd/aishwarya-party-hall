@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { orderAdditions } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   const staff = await getStaffSession(request);
   if (!staff) return Response.json({ error: "Staff access required" }, { status: 403 });
   try {
-    const rows = await getDb().select().from(orderAdditions).orderBy(desc(orderAdditions.functionDate), desc(orderAdditions.id));
+    const rows = await getDb().select().from(orderAdditions).orderBy(desc(orderAdditions.functionDate), asc(orderAdditions.id));
     const highestOrder = rows.reduce((highest, item) => Math.max(highest, Number(item.orderId.match(/^SS-(\d+)$/)?.[1] ?? 0)), 0);
     return Response.json({ additions: rows.map(forClient), role: staff.role, nextOrderId: `SS-${String(highestOrder + 1).padStart(3, "0")}` });
   } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Unable to load additions" }, { status: 500 }); }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     const db = getDb();
     const result = await db.insert(orderAdditions).values(values);
     const firstId = Number(result[0].insertId);
-    const additions = await db.select().from(orderAdditions).where(eq(orderAdditions.orderId, values[0].orderId)).orderBy(desc(orderAdditions.id));
+    const additions = await db.select().from(orderAdditions).where(eq(orderAdditions.orderId, values[0].orderId)).orderBy(asc(orderAdditions.id));
     const created = additions.filter((row) => row.id >= firstId).map(forClient);
     return Response.json({ addition: created[0], additions: created }, { status: 201 });
   } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Unable to save addition" }, { status: 400 }); }

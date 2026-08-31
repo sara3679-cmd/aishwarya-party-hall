@@ -31,11 +31,18 @@ export default function DatabaseBackupPage() {
     if (!backup || !summary) return;
     if (!window.confirm("Restore this backup? All current bookings, expenses, income and database users will be replaced.")) return;
     setImporting(true); setMessage("");
-    const response = await fetch("/api/admin/backup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(backup) });
-    const data = await response.json();
-    setImporting(false);
-    if (!response.ok) { setMessage(data.error || "Unable to restore the backup"); return; }
-    setMessage(`Backup restored: ${data.counts.bookings} bookings, ${data.counts.expenses} expenses, ${data.counts.additionalIncome} income records, ${data.counts.staffUsers} users${data.counts.orderAdditions === null ? ". Existing SS Foods orders were preserved because this is an older backup." : ` and ${data.counts.orderAdditions} SS Foods addition items.`}`);
+    try {
+      const response = await fetch("/api/admin/backup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(backup) });
+      const text = await response.text();
+      let data: { error?: string; counts?: { bookings: number; expenses: number; additionalIncome: number; staffUsers: number; orderAdditions: number | null } } = {};
+      try { data = text ? JSON.parse(text) : {}; } catch { /* handled below */ }
+      if (!response.ok || !data.counts) { setMessage(data.error || `Unable to restore the backup (server response ${response.status}).`); return; }
+      setMessage(`Backup restored: ${data.counts.bookings} bookings, ${data.counts.expenses} expenses, ${data.counts.additionalIncome} income records, ${data.counts.staffUsers} users${data.counts.orderAdditions === null ? ". Existing SS Foods orders were preserved because this is an older backup." : ` and ${data.counts.orderAdditions} SS Foods addition items.`}`);
+    } catch {
+      setMessage("Unable to contact the restore service. Please check that the offline server is running and try again.");
+    } finally {
+      setImporting(false);
+    }
   }
 
   if (authorized === null) return <main className="adminPage"><p>Checking administrator access…</p></main>;
