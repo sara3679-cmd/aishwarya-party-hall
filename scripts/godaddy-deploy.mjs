@@ -8,6 +8,7 @@ const root = resolve(import.meta.dirname, "..");
 const deployRoot = join(root, "deploy", "godaddy-full-app");
 const outputZip = join(root, "deploy", "aishwarya-godaddy-one-click.zip");
 const publish = process.argv.includes("--publish");
+const prepareOnly = process.argv.includes("--prepare-only");
 
 function loadPrivateEnvironment() {
   const file = join(root, ".env.godaddy.local");
@@ -89,7 +90,7 @@ async function poll(label, readStatus, isComplete) {
 
 loadPrivateEnvironment();
 const appId = process.env.GODADDY_APP_ID || "s9rxiphgty";
-if (!process.env.GODADDY_PAT || process.env.GODADDY_PAT.includes("paste_your")) {
+if (!prepareOnly && (!process.env.GODADDY_PAT || /paste|replace/i.test(process.env.GODADDY_PAT))) {
   throw new Error("Create .env.godaddy.local from .env.godaddy.example and add your GoDaddy Personal Access Token.");
 }
 
@@ -99,6 +100,11 @@ console.log("2/5 Running the GoDaddy production build check…");
 execFileSync("npm", ["run", "build"], { cwd: deployRoot, stdio: "inherit" });
 console.log("3/5 Creating a deployment ZIP…");
 createZip();
+
+if (prepareOnly) {
+  console.log(`Prepared deployment package: ${outputZip}`);
+  process.exit(0);
+}
 
 console.log("4/5 Uploading to GoDaddy Preview…");
 const form = new FormData();
