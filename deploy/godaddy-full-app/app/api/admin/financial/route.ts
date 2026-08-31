@@ -30,6 +30,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
   const payload = await request.json() as Record<string, string>;
+  const orderId = payload.orderId?.trim() ?? "";
   const expenseDate = payload.expenseDate?.trim();
   const location = payload.location?.trim();
   const category = payload.category?.trim();
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   const amount = Number(payload.amount);
   if (!expenseDate || !location || !["Padi", "Korattur", "General"].includes(location) || !category || !description || !Number.isFinite(amount) || amount <= 0) return Response.json({ error: "Complete all valid expense details" }, { status: 400 });
   const db = getDb();
-  const result = await db.insert(expenses).values({ expenseDate, location: location as "Padi" | "Korattur" | "General", category, description, amount: Math.round(amount) });
+  const result = await db.insert(expenses).values({ orderId, expenseDate, location: location as "Padi" | "Korattur" | "General", category, description, amount: Math.round(amount) });
   const [expense] = await db.select().from(expenses).where(eq(expenses.id, Number(result[0].insertId))).limit(1);
   return Response.json({ expense }, { status: 201 });
 }

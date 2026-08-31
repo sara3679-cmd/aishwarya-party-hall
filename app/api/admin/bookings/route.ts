@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return Response.json({ error: `This hall is already booked from ${formatTimeRange12Hour(conflict.startTime, conflict.endTime)}` }, { status: 409 });
     }
 
-    const [booking] = await db.insert(bookings).values({
+    const bookingValues = {
       location: location as "Padi" | "Korattur",
       bookingDate,
       startTime,
@@ -82,7 +82,24 @@ export async function POST(request: Request) {
       mobile,
       amount: Math.round(amount),
       advanceReceived: Math.round(advanceReceived),
-    }).returning();
+      status: "confirmed" as const,
+    };
+
+    const [cancelledExactSlot] = await db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(and(
+        eq(bookings.location, location as "Padi" | "Korattur"),
+        eq(bookings.bookingDate, bookingDate),
+        eq(bookings.startTime, startTime),
+        eq(bookings.endTime, endTime),
+        eq(bookings.status, "cancelled"),
+      ))
+      .limit(1);
+
+    const [booking] = cancelledExactSlot
+      ? await db.update(bookings).set(bookingValues).where(eq(bookings.id, cancelledExactSlot.id)).returning()
+      : await db.insert(bookings).values(bookingValues).returning();
 
     return Response.json({ booking }, { status: 201 });
   } catch (error) {
