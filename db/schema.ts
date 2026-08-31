@@ -21,6 +21,7 @@ export const bookings = mysqlTable("bookings", {
 
 export const expenses = mysqlTable("expenses", {
   id: int("id").autoincrement().primaryKey(),
+  orderId: varchar("order_id", { length: 100 }).notNull().default(""),
   expenseDate: varchar("expense_date", { length: 10 }).notNull(),
   location: mysqlEnum("location", ["Padi", "Korattur", "General"]).notNull(),
   category: varchar("category", { length: 255 }).notNull(),

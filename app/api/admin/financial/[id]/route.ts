@@ -19,6 +19,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const { id } = await context.params;
   const expenseId = Number(id);
   const payload = await request.json() as Record<string, string>;
+  const orderId = payload.orderId?.trim() ?? "";
   const expenseDate = payload.expenseDate?.trim();
   const location = payload.location?.trim();
   const category = payload.category?.trim();
@@ -26,7 +27,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const amount = Number(payload.amount);
   if (!Number.isInteger(expenseId) || !expenseDate || !location || !["Padi", "Korattur", "General"].includes(location) || !category || !description || !Number.isFinite(amount) || amount <= 0) return Response.json({ error: "Complete all valid expense details" }, { status: 400 });
   const db = getDb();
-  await db.update(expenses).set({ expenseDate, location: location as "Padi" | "Korattur" | "General", category, description, amount: Math.round(amount) }).where(eq(expenses.id, expenseId));
+  await db.update(expenses).set({ orderId, expenseDate, location: location as "Padi" | "Korattur" | "General", category, description, amount: Math.round(amount) }).where(eq(expenses.id, expenseId));
   const [expense] = await db.select().from(expenses).where(eq(expenses.id, expenseId)).limit(1);
   if (!expense) return Response.json({ error: "Expense not found" }, { status: 404 });
   return Response.json({ expense });
