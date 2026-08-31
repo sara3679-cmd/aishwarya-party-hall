@@ -29,7 +29,13 @@ function validPayload(value: unknown): value is SyncPayload {
 
 export async function POST(request: Request) {
   if (!authorized(request)) return Response.json({ error: "Synchronization access denied" }, { status: 401 });
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL || (() => {
+    const { DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD } = process.env;
+    if (!DB_HOST || !DB_NAME || !DB_USER || DB_PASSWORD == null) return "";
+    const user = encodeURIComponent(DB_USER);
+    const password = encodeURIComponent(DB_PASSWORD);
+    return `mysql://${user}:${password}@${DB_HOST}:${DB_PORT || "3306"}/${DB_NAME}`;
+  })();
   if (!connectionString) return Response.json({ error: "Online database connection is unavailable" }, { status: 503 });
 
   let payload: unknown;
