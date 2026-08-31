@@ -44,7 +44,12 @@ export async function POST(request: Request) {
 
   const connection = await mysql.createConnection({ uri: connectionString });
   try {
-    await connection.query("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS order_id VARCHAR(100) NOT NULL DEFAULT ''");
+    const [expenseOrderColumns] = await connection.query<mysql.RowDataPacket[]>(
+      "SELECT COUNT(*) AS column_count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'expenses' AND COLUMN_NAME = 'order_id'",
+    );
+    if (Number(expenseOrderColumns[0]?.column_count ?? 0) === 0) {
+      await connection.query("ALTER TABLE expenses ADD COLUMN order_id VARCHAR(100) NOT NULL DEFAULT ''");
+    }
     await connection.query(`CREATE TABLE IF NOT EXISTS offline_sync_backups (
       id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
       synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
