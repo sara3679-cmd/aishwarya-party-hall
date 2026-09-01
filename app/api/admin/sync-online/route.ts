@@ -34,7 +34,12 @@ export async function POST(request: Request) {
     const text = await response.text();
     let result: { error?: string; counts?: Record<string, number>; backupId?: number } = {};
     try { result = text ? JSON.parse(text) : {}; } catch { /* handled below */ }
-    if (!response.ok || !result.counts) return Response.json({ error: result.error || `Online server returned ${response.status}` }, { status: 502 });
+    if (!response.ok || !result.counts) {
+      const error = response.status === 404
+        ? "The online sync receiver is not published yet. Publish the latest GoDaddy website, then try again."
+        : result.error || `Online server returned ${response.status}`;
+      return Response.json({ error }, { status: 502 });
+    }
     return Response.json({ success: true, ...result });
   } catch {
     return Response.json({ error: "Unable to reach the online website. Check the internet connection and try again." }, { status: 502 });

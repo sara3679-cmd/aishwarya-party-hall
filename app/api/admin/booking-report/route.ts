@@ -6,6 +6,7 @@ import { getStaffSession } from "../../../admin-auth";
 export async function GET(request: Request) {
   const staff = await getStaffSession(request);
   if (!staff) return Response.json({ error: "Please sign in" }, { status: 401 });
+  if (staff.role !== "admin") return Response.json({ error: "Administrator access required" }, { status: 403 });
   const url = new URL(request.url);
   const year = url.searchParams.get("year") ?? "All";
   const month = url.searchParams.get("month") ?? "All";
