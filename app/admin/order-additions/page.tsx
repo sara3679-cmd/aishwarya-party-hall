@@ -42,7 +42,7 @@ const advanceTotal=advances.reduce((sum,row)=>sum+(Number(row.amount)||0),0), ba
   if(!staff)return <main className="adminPage loginPage"><section className="adminLogin"><p className="kicker">Secure staff access</p><h1>SS FOODS</h1><p>Sign in through Booking Manager first.</p><a href="/admin">Go to staff sign in →</a></section></main>;
 
   return <main className="adminPage additionsPage">
-    <header className="adminHeader"><div><p className="kicker">SS FOODS · Catering service</p><h1>Confirm Order — Additions</h1><p className="staffRole">Create an addition sheet with multiple items.</p></div><div className="adminHeaderActions"><a href="/admin">Booking manager</a><button onClick={()=>print()}>Print register</button></div></header>
+    <header className="adminHeader"><div><p className="kicker">SS FOODS · Catering service</p><h1>New Order</h1><p className="staffRole">Create an addition sheet with multiple items.</p></div><div className="adminHeaderActions cateringAdminNav"><a className="currentNavLink" href="/admin/order-additions">New Order</a><a href="/admin/catering-expenses">Expenses</a><a href="/admin/catering-expenses/profit-loss">Profit / Loss</a><a href="/admin">Admin Home</a><button onClick={()=>print()}>Print</button></div></header>
     {staff.role==="admin"&&<form className="additionInvoice" onSubmit={submit}>
       <div className="invoiceBrand"><div><strong>SS FOODS</strong><span>CATERING SERVICE</span><em>Good Food. Good Mood. Great Memories.</em></div><b>{editing?"EDIT ADDITION":"ADDITION ORDER"}</b></div>
       <div className="invoiceMeta">

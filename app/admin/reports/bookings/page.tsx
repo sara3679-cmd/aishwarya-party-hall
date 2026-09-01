@@ -59,20 +59,20 @@ export default function BookingReportsPage() {
   }
 
   async function addCommission(booking: Booking) {
-    const choice = window.prompt("Commission type: 1 = Stage, 2 = Photographer, 3 = Other", "1");
+    const choice = window.prompt("Revenue type: 1 = Stage, 2 = Photographer, 3 = Other", "1");
     if (choice === null) return;
     const category = choice === "1" ? "Stage Commission" : choice === "2" ? "Photographer Commission" : choice === "3" ? "Other Income" : "";
-    if (!category) { setMessage("Choose commission type 1, 2 or 3."); return; }
-    const entered = window.prompt(`Enter ${category} amount for ${booking.billNo || booking.customerName}:`, "");
+    if (!category) { setMessage("Choose revenue type 1, 2 or 3."); return; }
+    const entered = window.prompt(`Enter revenue amount for ${booking.billNo || booking.customerName}:`, "");
     if (entered === null) return;
     const amount = Number(entered.replace(/,/g, ""));
-    if (!Number.isFinite(amount) || amount <= 0) { setMessage("Enter a valid commission amount."); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { setMessage("Enter a valid revenue amount."); return; }
     setSavingId(booking.id); setMessage("");
     const response = await fetch("/api/admin/financial", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ incomeDate: booking.bookingDate, location: booking.location, category, description: `${category} - ${booking.functionName} - ${booking.customerName} - Booking ID ${booking.id} / Bill ${booking.billNo || "—"}`, amount }) });
     const data = await response.json();
     setSavingId(null);
-    if (!response.ok) { setMessage(data.error || "Unable to save commission income"); return; }
-    setMessage(`${category} of ₹${amount.toLocaleString("en-IN")} saved for ${booking.billNo || booking.customerName}.`);
+    if (!response.ok) { setMessage(data.error || "Unable to save revenue"); return; }
+    setMessage(`Revenue of ₹${amount.toLocaleString("en-IN")} saved for ${booking.billNo || booking.customerName}.`);
     load();
   }
 
@@ -90,10 +90,10 @@ export default function BookingReportsPage() {
     return Array.from(result.entries()).sort(([a], [b]) => b.localeCompare(a));
   }, [bookings]);
 
-  if (!loading && !role) return <main className="adminPage loginPage"><div className="adminLogin"><h1>Staff access required</h1><p>{message || "Please sign in to view booking reports."}</p><a href="/admin">← Go to admin login</a></div></main>;
+  if (!loading && !role) return <main className="adminPage loginPage"><div className="adminLogin"><h1>{message.includes("Administrator") ? "Administrator only" : "Staff access required"}</h1><p>{message || "Please sign in to view booking reports."}</p><a href="/admin">← Return to Admin Home</a></div></main>;
 
   return <main className="adminPage bookingReportsPage">
-    <header className="adminHeader"><div><p className="kicker">Booking records</p><h1>Year & Month Reports</h1><p className="staffRole">Bookings grouped month-wise and separately by location.</p></div><div className="adminHeaderActions"><a href="/admin">Booking manager</a><button onClick={() => window.print()}>Print report</button></div></header>
+    <header className="adminHeader"><div><p className="kicker">Booking Expenses &amp; Revenue</p><h1>Booking Expenses &amp; Revenue</h1><p className="staffRole">Booking expenses and revenue grouped month-wise and separately by location.</p></div><div className="adminHeaderActions bookingAdminNav"><a href="/admin/bookings/new">New Booking</a><a href="/admin/bookings">Booking Manager</a><a className="currentNavLink" href="/admin/reports/bookings">Expenses &amp; Revenue</a><a href="/admin/financial/profit-loss">Profit &amp; Loss</a><a href="/admin">Admin Home</a><button onClick={() => window.print()}>Print Report</button></div></header>
     <section className="bookingReportFilters"><label>Year<select value={year} onChange={(event) => { setYear(event.target.value); if (event.target.value === "All") setMonth("All"); }}><option value="All">All years</option>{availableYears.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label>Month<select value={month} disabled={year === "All"} onChange={(event) => setMonth(event.target.value)}><option value="All">All months</option>{monthNames.map((name, index) => <option key={name} value={String(index + 1).padStart(2, "0")}>{name}</option>)}</select></label><label>Location<select value={location} onChange={(event) => setLocation(event.target.value)}><option value="All">Both locations</option><option>Padi</option><option>Korattur</option></select></label><button onClick={load}>Refresh</button></section>
     {message && <p className="adminMessage">{message}</p>}
     {!loading && role && <div className="bookingGroupList">{groups.length ? groups.map(([key, rows]) => {
@@ -103,7 +103,7 @@ export default function BookingReportsPage() {
       const advance = rows.reduce((sum, item) => sum + item.advanceReceived, 0);
       return <section className={`bookingMonthGroup ${groupLocation.toLowerCase()}`} key={key}>
         <header><div><span>{groupLocation}</span><h2>{monthNames[Number(groupMonth) - 1]} {groupYear}</h2><p>{rows.length} confirmed booking{rows.length === 1 ? "" : "s"}</p></div>{role === "admin" && <div className="groupMoney"><span>Total <b>₹{total.toLocaleString("en-IN")}</b></span><span>Received <b>₹{advance.toLocaleString("en-IN")}</b></span><span>Balance <b>₹{(total - advance).toLocaleString("en-IN")}</b></span></div>}</header>
-        <div className="reportTableWrap"><table><thead><tr><th>Date & Time</th><th>Bill No.</th><th>Function</th><th>Customer</th>{role === "admin" && <><th>Booking Income</th><th>Commission</th><th>Expenses</th><th>Profit / Loss</th><th>Balance</th><th className="bookingActionsColumn">Actions</th></>}</tr></thead><tbody>{rows.map((item) => { const balance = item.amount - item.advanceReceived; const profit = item.amount + item.commissionAmount - item.expenseAmount; return <tr key={item.id}><td><b>{new Date(`${item.bookingDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td>{item.billNo || "—"}</td><td>{item.functionName}</td><td><b>{item.customerName}</b><small>{item.mobile}</small></td>{role === "admin" && <><td>₹{item.amount.toLocaleString("en-IN")}</td><td>₹{item.commissionAmount.toLocaleString("en-IN")}</td><td>₹{item.expenseAmount.toLocaleString("en-IN")}</td><td className={profit >= 0 ? "bookingProfit" : "bookingLoss"}>{profit >= 0 ? "Profit" : "Loss"} ₹{Math.abs(profit).toLocaleString("en-IN")}</td><td>₹{balance.toLocaleString("en-IN")}</td><td className="bookingActionsColumn"><div className="bookingReportActions">{balance > 0 && <button className="receivedButton" disabled={savingId === item.id} onClick={() => receiveBalance(item)}>{savingId === item.id ? "Saving…" : "Received"}</button>}<button className="incomeButton" disabled={savingId === item.id} onClick={() => addCommission(item)}>Commission</button><a className="expenseButton" href={expenseUrl(item)}>Expenses</a><a className="editButton" href={`/admin/bookings/new?editBooking=${item.id}`}>Edit</a><button className="deleteButton" disabled={savingId === item.id} onClick={() => deleteBooking(item)}>{savingId === item.id ? "Deleting…" : "Delete"}</button></div></td></>}</tr>; })}</tbody></table></div>
+        <div className="reportTableWrap"><table><thead><tr><th>Date & Time</th><th>Bill No.</th><th>Function</th><th>Customer</th>{role === "admin" && <><th>Booking Revenue</th><th>Additional Revenue</th><th>Expenses</th><th>Profit / Loss</th><th>Balance</th><th className="bookingActionsColumn">Actions</th></>}</tr></thead><tbody>{rows.map((item) => { const balance = item.amount - item.advanceReceived; const profit = item.amount + item.commissionAmount - item.expenseAmount; return <tr key={item.id}><td><b>{new Date(`${item.bookingDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td>{item.billNo || "—"}</td><td>{item.functionName}</td><td><b>{item.customerName}</b><small>{item.mobile}</small></td>{role === "admin" && <><td>₹{item.amount.toLocaleString("en-IN")}</td><td>₹{item.commissionAmount.toLocaleString("en-IN")}</td><td>₹{item.expenseAmount.toLocaleString("en-IN")}</td><td className={profit >= 0 ? "bookingProfit" : "bookingLoss"}>{profit >= 0 ? "Profit" : "Loss"} ₹{Math.abs(profit).toLocaleString("en-IN")}</td><td>₹{balance.toLocaleString("en-IN")}</td><td className="bookingActionsColumn"><div className="bookingReportActions">{balance > 0 && <button className="receivedButton" disabled={savingId === item.id} onClick={() => receiveBalance(item)}>{savingId === item.id ? "Saving…" : "Received"}</button>}<button className="incomeButton" disabled={savingId === item.id} onClick={() => addCommission(item)}>Revenue</button><a className="expenseButton" href={expenseUrl(item)}>Expenses</a></div></td></>}</tr>; })}</tbody></table></div>
       </section>;
     }) : <p className="emptyBookings">No bookings found for the selected period and location.</p>}</div>}
   </main>;
