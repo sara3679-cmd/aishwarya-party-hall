@@ -1,0 +1,3 @@
+.orderExpensesLink { color: #8d0b0f; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.orderExpensesLink:hover { color: #176b45; }
+.orderExpensesLink:focus-visible { outline: 2px solid #8d0b0f; outline-offset: 4px; }

@@ -25,8 +25,8 @@ export default function Page() {
 const [discountQty,setDiscountQty]=useState(0),[discountRate,setDiscountRate]=useState(0);
 const discountAmount=discountQty*Math.abs(discountRate), total=rows.reduce((sum,row)=>sum+row.originalQty*row.rate,0)-discountAmount;
 const advanceTotal=advances.reduce((sum,row)=>sum+(Number(row.amount)||0),0), balancePayable=Math.max(0,total-advanceTotal);
-  const load=useCallback(async()=>{ try { const response=await fetch("/api/admin/order-additions"), data=await readJson(response); if(!response.ok){setMessage(data.error??"Unable to load additions");return;} setSaved(data.additions??[]); setNextOrderId(data.nextOrderId??"SS-001"); } catch { setMessage("Unable to connect to the additions service."); } },[]);
-  useEffect(()=>{ fetch("/api/auth/session").then(r=>r.ok?r.json():null).then(data=>{setStaff(data);if(data)load();}).finally(()=>setChecking(false)); },[load]);
+  const load=useCallback(async(requestedOrderId?:string)=>{ try { const response=await fetch("/api/admin/order-additions"), data=await readJson(response); if(!response.ok){setMessage(data.error??"Unable to load additions");return;} setSaved(data.additions??[]); setNextOrderId(data.nextOrderId??"SS-001"); if(requestedOrderId){const items=(data.additions??[]).filter((item:Addition)=>item.orderId===requestedOrderId);setSearch(requestedOrderId);if(items.length)editGroup(items);else setMessage(`Order ${requestedOrderId} was not found.`);} } catch { setMessage("Unable to connect to the additions service."); } },[]);
+  useEffect(()=>{ fetch("/api/auth/session").then(r=>r.ok?r.json():null).then(data=>{setStaff(data);if(data)load(data.role==="admin"?(new URLSearchParams(window.location.search).get("orderId")??undefined):undefined);}).finally(()=>setChecking(false)); },[load]);
   const shown=useMemo(()=>{const q=search.trim().toLowerCase();return q?saved.filter(i=>[i.orderId,i.itemName,i.mealSession,i.foodType].some(v=>v.toLowerCase().includes(q))):saved;},[saved,search]);
   const groups=useMemo(()=>Object.values(shown.reduce<Record<string,{key:string;orderId:string;functionDate:string;functionTime:string;mealSession:string;foodType:string;items:Addition[]}>>((all,item)=>{const key=`${item.orderId}|${item.functionDate}|${item.functionTime}|${item.mealSession}|${item.foodType}`;if(!all[key])all[key]={key,orderId:item.orderId,functionDate:item.functionDate,functionTime:item.functionTime,mealSession:item.mealSession,foodType:item.foodType,items:[]};all[key].items.push(item);return all;},{})).sort((a,b)=>`${a.functionDate}T${a.functionTime}`.localeCompare(`${b.functionDate}T${b.functionTime}`)),[shown]);
   function update(key:number,field:keyof Draft,value:string|number){setRows(items=>items.map(item=>item.key===key?{...item,[field]:value}:item));}
@@ -43,7 +43,7 @@ const advanceTotal=advances.reduce((sum,row)=>sum+(Number(row.amount)||0),0), ba
 
   return <main className="adminPage additionsPage">
     <header className="adminHeader"><div><p className="kicker">SS FOODS · Catering service</p><h1>New Order</h1><p className="staffRole">Create an addition sheet with multiple items.</p></div><div className="adminHeaderActions cateringAdminNav"><a className="currentNavLink" href="/admin/order-additions">New Order</a><a href="/admin/catering-expenses">Expenses</a><a href="/admin/catering-expenses/profit-loss">Profit / Loss</a><a href="/admin">Admin Home</a><button onClick={()=>print()}>Print</button></div></header>
-    {staff.role==="admin"&&<form className="additionInvoice" onSubmit={submit}>
+    {staff.role==="admin"&&<form className="additionInvoice" onSubmit={submit} key={editing?.id??"new"}>
       <div className="invoiceBrand"><div><strong>SS FOODS</strong><span>CATERING SERVICE</span><em>Good Food. Good Mood. Great Memories.</em></div><b>{editing?"EDIT ADDITION":"ADDITION ORDER"}</b></div>
       <div className="invoiceMeta">
         <input type="hidden" name="discount" value={discountAmount}/>
