@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type Booking = { id: number; bookingDate: string; location: string; billNo: string; functionName: string; customerName: string; amount: number; advanceReceived: number };
-type Expense = { id: number; expenseDate: string; location: string; category: string; description: string; amount: number };
+type Expense = { id: number; orderId: string; expenseDate: string; location: string; category: string; description: string; amount: number };
 type Income = { id: number; incomeDate: string; location: string; category: string; description: string; amount: number };
 
 const money = (value: number) => `₹${value.toLocaleString("en-IN")}`;
@@ -34,7 +34,7 @@ export default function FinancialReportPage() {
     const response = await fetch(`/api/admin/financial?from=${from}&to=${to}&location=${location}`);
     const data = await response.json();
     if (!response.ok) { setAuthorized(false); setMessage(data.error); return; }
-    setAuthorized(true); setBookings(data.bookings ?? []); setExpenses(data.expenses ?? []); setIncome(data.income ?? []);
+    setAuthorized(true); setBookings(data.bookings ?? []); setExpenses((data.expenses ?? []).filter((item: Expense) => !item.orderId)); setIncome(data.income ?? []);
   }, [from, to, location]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Booking = { bookingDate: string; amount: number; advanceReceived: number };
-type Expense = { expenseDate: string; amount: number };
+type Expense = { orderId: string; expenseDate: string; amount: number };
 type Income = { incomeDate: string; amount: number };
 type MonthRow = { month: string; revenue: number; commission: number; income: number; collected: number; outstanding: number; expenses: number; profit: number };
 
@@ -23,7 +23,7 @@ export default function MonthlyYearlyProfitLossPage() {
     const response = await fetch(`/api/admin/financial?from=${year}-01-01&to=${year}-12-31&location=${location}`);
     const data = await response.json();
     if (!response.ok) { setAuthorized(false); setMessage(data.error ?? "Unable to load report"); return; }
-    setAuthorized(true); setBookings(data.bookings ?? []); setExpenses(data.expenses ?? []); setIncome(data.income ?? []);
+    setAuthorized(true); setBookings(data.bookings ?? []); setExpenses((data.expenses ?? []).filter((item: Expense) => !item.orderId)); setIncome(data.income ?? []);
   }, [year, location]);
   useEffect(() => { load(); }, [load]);
 
