@@ -71,29 +71,6 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
     }
   }, [staff, editing]);
 
-  useEffect(() => {
-    const confirmed = bookings.filter((booking) => booking.status === "confirmed");
-    const latestIds = new Map<string, number>();
-    for (const booking of confirmed) {
-      latestIds.set(booking.location, Math.max(latestIds.get(booking.location) ?? 0, booking.id));
-    }
-
-    const applyLatestClasses = (selector: string) => {
-      const rows = Array.from(document.querySelectorAll<HTMLElement>(selector));
-      rows.forEach((row, index) => {
-        row.classList.remove("latestSavedEntry", "latestPadi", "latestKorattur");
-        const booking = confirmed[index];
-        if (!booking || latestIds.get(booking.location) !== booking.id) return;
-        row.classList.add("latestSavedEntry", booking.location === "Padi" ? "latestPadi" : "latestKorattur");
-      });
-    };
-
-    const frame = window.requestAnimationFrame(() => {
-      applyLatestClasses(".bookingList .bookingRow");
-      applyLatestClasses(".bookingReport tbody tr");
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [bookings]);
 
 
   async function login(event: FormEvent<HTMLFormElement>) {
@@ -188,6 +165,10 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
   if (!staff) return <main className="adminPage loginPage"><form className="adminLogin" onSubmit={login}><p className="kicker">Secure staff access</p><h1>Aishwarya Administration</h1><p>Administrators can manage bookings. Viewers can only read booking information.</p><label>Username<input name="username" required autoComplete="username" /></label><label>Password<input name="password" required type="password" autoComplete="current-password" /></label><button>Sign in</button>{message && <p className="adminMessage">{message}</p>}<a href="/">← Return to website</a></form></main>;
 
   const confirmed = bookings.filter((item) => item.status === "confirmed");
+  const latestIds = new Map<string, number>();
+  for (const booking of confirmed) {
+    latestIds.set(booking.location, Math.max(latestIds.get(booking.location) ?? 0, booking.id));
+  }
   const padiConfirmed = confirmed.filter((item) => item.location === "Padi");
   const koratturConfirmed = confirmed.filter((item) => item.location === "Korattur");
   const totalValue = confirmed.reduce((sum, item) => sum + (item.amount ?? 0), 0);
@@ -210,7 +191,7 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
   return <main className="adminPage bookingManagerPage">
     <header className="adminHeader"><div><p className="kicker">Aishwarya Party Hall</p><h1>Booking Manager</h1><p className="staffRole">Confirmed bookings, payments and customer records</p></div>{staff.role === "admin" ? <div className="adminHeaderActions bookingAdminNav"><a href="/admin/bookings/new">New Booking</a><a className="currentNavLink" href="/admin/bookings">Booking Manager</a><a href="/admin/financial">New Expenses &amp; Revenue</a><a href="/admin/reports/bookings">Expenses &amp; Revenue</a><a href="/admin/financial/profit-loss">Profit &amp; Loss</a><a href="/admin">Admin Home</a></div> : <div className="adminHeaderActions bookingAdminNav"><a className="currentNavLink" href="/admin/bookings">Booking Manager</a><a href="/admin">Admin Home</a></div>}</header>
     <section className="bookingManagerSummary"><article><small>All Locations</small><b>{confirmed.length} <em>Bookings</em></b><span>₹{totalValue.toLocaleString("en-IN")}</span></article><article><small>Padi</small><b>{padiConfirmed.length} <em>Bookings</em></b><span>₹{padiValue.toLocaleString("en-IN")}</span></article><article><small>Korattur</small><b>{koratturConfirmed.length} <em>Bookings</em></b><span>₹{koratturValue.toLocaleString("en-IN")}</span></article></section>
-    <section className="bookingReport"><div className="reportHead"><div><p className="kicker">Confirmed booking register</p><h2>{staff.role === "admin" ? "Bookings & payment summary" : "Booking details"}</h2><p>All confirmed bookings across Padi and Korattur</p></div><div className="reportHeadActions">{staff.role === "admin" ? <><button className="whatsappReportButton withoutAmount" disabled={sharingReport} onClick={() => sendUpcomingReport(false)}>{sharingReport ? "Preparing…" : "WhatsApp"}</button><button className="whatsappReportButton" disabled={sharingReport} onClick={() => sendUpcomingReport(true)}>{sharingReport ? "Preparing…" : "WhatsApp + Amount"}</button></> : <button className="whatsappReportButton withoutAmount" disabled={sharingReport} onClick={() => sendUpcomingReport(false)}>{sharingReport ? "Preparing…" : "WhatsApp"}</button>}<button onClick={() => window.print()}>Print</button></div></div><div className="reportTableWrap"><table><thead><tr><th>Bill No.</th><th className="dateColumn">Date &amp; time</th><th>Location</th><th>Function name</th><th>Customer details</th>{staff.role === "admin" && <><th className="moneyColumn">Amount</th><th className="moneyColumn">Advance</th><th className="moneyColumn">Balance</th><th>Actions</th></>}</tr></thead><tbody>{confirmed.map((item) => { const balance = (item.amount ?? 0) - (item.advanceReceived ?? 0); return <tr key={item.id}><td className="billCell">{item.billNo || "—"}</td><td className="dateCell"><b>{new Date(`${item.bookingDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td><span className={`locationBadge ${item.location.toLowerCase()}`}>{item.location}</span></td><td className="functionCell">{item.functionName}</td><td className="customerCell"><b>{item.customerName}</b><a href={`tel:${item.mobile}`}>{item.mobile}</a></td>{staff.role === "admin" && <><td className="moneyCell">₹{(item.amount ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell advanceCell">₹{(item.advanceReceived ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell balanceCell"><b>₹{balance.toLocaleString("en-IN")}</b></td><td><div className="bookingActions"><a href={`/admin/bookings/new?editBooking=${item.id}`}>Edit</a><button onClick={() => cancel(item)}>Delete</button></div></td></>}</tr>; })}{!confirmed.length && <tr><td colSpan={staff.role === "admin" ? 9 : 5}>No confirmed bookings found.</td></tr>}</tbody></table></div>{message && <p className="adminMessage">{message}</p>}</section>
+    <section className="bookingReport"><div className="reportHead"><div><p className="kicker">Confirmed booking register</p><h2>{staff.role === "admin" ? "Bookings & payment summary" : "Booking details"}</h2><p>All confirmed bookings across Padi and Korattur</p></div><div className="reportHeadActions">{staff.role === "admin" ? <><button className="whatsappReportButton withoutAmount" disabled={sharingReport} onClick={() => sendUpcomingReport(false)}>{sharingReport ? "Preparing…" : "WhatsApp"}</button><button className="whatsappReportButton" disabled={sharingReport} onClick={() => sendUpcomingReport(true)}>{sharingReport ? "Preparing…" : "WhatsApp + Amount"}</button></> : <button className="whatsappReportButton withoutAmount" disabled={sharingReport} onClick={() => sendUpcomingReport(false)}>{sharingReport ? "Preparing…" : "WhatsApp"}</button>}<button onClick={() => window.print()}>Print</button></div></div><div className="reportTableWrap"><table><thead><tr><th>Bill No.</th><th className="dateColumn">Date &amp; time</th><th>Location</th><th>Function name</th><th>Customer details</th>{staff.role === "admin" && <><th className="moneyColumn">Amount</th><th className="moneyColumn">Advance</th><th className="moneyColumn">Balance</th><th>Actions</th></>}</tr></thead><tbody>{confirmed.map((item) => { const balance = (item.amount ?? 0) - (item.advanceReceived ?? 0); return <tr key={item.id} className={latestIds.get(item.location) === item.id ? `latestSavedEntry ${item.location === "Padi" ? "latestPadi" : "latestKorattur"}` : ""}><td className="billCell">{item.billNo || "—"}</td><td className="dateCell"><b>{new Date(`${item.bookingDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td><span className={`locationBadge ${item.location.toLowerCase()}`}>{item.location}</span></td><td className="functionCell">{item.functionName}</td><td className="customerCell"><b>{item.customerName}</b><a href={`tel:${item.mobile}`}>{item.mobile}</a></td>{staff.role === "admin" && <><td className="moneyCell">₹{(item.amount ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell advanceCell">₹{(item.advanceReceived ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell balanceCell"><b>₹{balance.toLocaleString("en-IN")}</b></td><td><div className="bookingActions"><a href={`/admin/bookings/new?editBooking=${item.id}`}>Edit</a><button onClick={() => cancel(item)}>Delete</button></div></td></>}</tr>; })}{!confirmed.length && <tr><td colSpan={staff.role === "admin" ? 9 : 5}>No confirmed bookings found.</td></tr>}</tbody></table></div>{message && <p className="adminMessage">{message}</p>}</section>
     <p className="adminPrivacy">Customer names and mobile numbers are private and never shown on the public calendar.</p>
   </main>;
 }
