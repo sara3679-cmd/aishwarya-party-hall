@@ -10,6 +10,8 @@ export const bookings = mysqlTable("bookings", {
   functionName: varchar("function_name", { length: 255 }).notNull(),
   customerName: varchar("customer_name", { length: 255 }).notNull(),
   mobile: varchar("mobile", { length: 64 }).notNull(),
+  mobile2: varchar("mobile2", { length: 64 }).notNull().default(""),
+  address: varchar("address", { length: 2000 }).notNull().default(""),
   amount: int("amount").notNull().default(0),
   advanceReceived: int("advance_received").notNull().default(0),
   status: mysqlEnum("status", ["confirmed", "cancelled"]).notNull().default("confirmed"),

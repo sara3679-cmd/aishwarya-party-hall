@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, gte, lt, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, lt, ne } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { bookings } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
@@ -19,10 +19,21 @@ export async function GET(request: Request) {
     const rows = await getDb()
       .select()
       .from(bookings)
-      .where(gte(bookings.bookingDate, todayInChennai()))
+      .where(gte(bookings.bookingDate, `${todayInChennai().slice(0, 7)}-01`))
       .orderBy(asc(bookings.bookingDate), asc(bookings.startTime));
     const safeRows = staff.role === "admin" ? rows : rows.map(({ amount: _amount, advanceReceived: _advance, ...booking }) => booking);
-    return Response.json({ bookings: safeRows, role: staff.role });
+    const nextBillNumbers: Record<string, string> = {};
+    if (staff.role === "admin") {
+      for (const location of ["Padi", "Korattur"] as const) {
+        const [last] = await getDb().select({ billNo: bookings.billNo }).from(bookings)
+          .where(eq(bookings.location, location)).orderBy(desc(bookings.id)).limit(1);
+        const match = last?.billNo?.match(/^(.*?)(\d+)$/);
+        nextBillNumbers[location] = match
+          ? match[1] + (BigInt(match[2]) + BigInt(1)).toString().padStart(match[2].length, "0")
+          : last ? "" : "1";
+      }
+    }
+    return Response.json({ bookings: safeRows, role: staff.role, nextBillNumbers });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to load bookings" }, { status: 500 });
   }
@@ -42,6 +53,9 @@ export async function POST(request: Request) {
     const functionName = payload.functionName ? titleCase(payload.functionName) : "";
     const customerName = payload.customerName ? titleCase(payload.customerName) : "";
     const mobile = payload.mobile?.replace(/\s+/g, "").trim();
+    const mobile2 = payload.mobile2?.replace(/\s+/g, "").trim();
+    const address = payload.address?.trim();
+    if (mobile2 && !/^\+?[0-9]{10,13}$/.test(mobile2)) return Response.json({ error: "Enter a valid second mobile number" }, { status: 400 });
     const amount = Number(payload.amount ?? 0);
     const advanceReceived = Number(payload.advanceReceived ?? 0);
 
@@ -80,15 +94,14 @@ export async function POST(request: Request) {
       functionName,
       customerName,
       mobile,
+      mobile2: mobile2 ?? "",
+      address: address ?? "",
+      createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
       amount: Math.round(amount),
       advanceReceived: Math.round(advanceReceived),
       status: "confirmed" as const,
     };
 
-    // A deleted booking is retained as "cancelled" for reporting. The database
-    // also has a unique exact-slot index, so reuse that cancelled record when
-    // the same date and time are booked again instead of triggering a duplicate
-    // key error.
     const [cancelledExactSlot] = await db
       .select({ id: bookings.id })
       .from(bookings)

@@ -63,6 +63,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const functionName = payload.functionName ? titleCase(payload.functionName) : "";
   const customerName = payload.customerName ? titleCase(payload.customerName) : "";
   const mobile = payload.mobile?.replace(/\s+/g, "").trim();
+  const mobile2 = payload.mobile2?.replace(/\s+/g, "").trim() ?? "";
+  const address = payload.address?.trim() ?? "";
+  if (mobile2 && !/^\+?[0-9]{10,13}$/.test(mobile2)) return Response.json({ error: "Enter a valid second mobile number" }, { status: 400 });
   const amount = Number(payload.amount ?? 0);
   const advanceReceived = Number(payload.advanceReceived ?? 0);
   if (!Number.isInteger(bookingId) || !location || !["Padi", "Korattur"].includes(location) || !bookingDate || !startTime || !endTime || !billNo || !functionName || !customerName || !mobile) return Response.json({ error: "Complete all booking details" }, { status: 400 });
@@ -81,7 +84,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   )).limit(1);
   if (cancelledExactSlot) await db.delete(bookings).where(eq(bookings.id, cancelledExactSlot.id));
 
-  await db.update(bookings).set({ location: location as "Padi" | "Korattur", bookingDate, startTime, endTime, billNo, functionName, customerName, mobile, amount: Math.round(amount), advanceReceived: Math.round(advanceReceived) }).where(eq(bookings.id, bookingId));
+  await db.update(bookings).set({ location: location as "Padi" | "Korattur", bookingDate, startTime, endTime, billNo, functionName, customerName, mobile, mobile2, address, amount: Math.round(amount), advanceReceived: Math.round(advanceReceived) }).where(eq(bookings.id, bookingId));
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   return Response.json({ booking });
 }
