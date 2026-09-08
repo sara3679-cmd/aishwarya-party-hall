@@ -1,0 +1,29 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+
+type MenuItem = { id: number; name: string; type: "Veg" | "Non-Veg"; meal: string; category: string; rate: string; sides: string };
+const starter: MenuItem[] = [
+  { id: 1, name: "Idli with sambar and coconut chutney", type: "Veg", meal: "Breakfast", category: "Main Course", rate: "", sides: "Vada, Pongal, Kesari" },
+  { id: 2, name: "Masala dosa", type: "Veg", meal: "Breakfast", category: "Main Course", rate: "", sides: "Sambar, Coconut chutney" },
+  { id: 3, name: "Ven pongal", type: "Veg", meal: "Breakfast", category: "Main Course", rate: "", sides: "Sambar, Coconut chutney, Medu vada" },
+  { id: 4, name: "Poori with potato masala", type: "Veg", meal: "Breakfast", category: "Main Course", rate: "", sides: "Channa masala, Kesari" },
+  { id: 5, name: "Chettinad vegetable biryani", type: "Veg", meal: "Lunch / Dinner", category: "Rice Items", rate: "", sides: "Onion raita, Brinjal curry" },
+  { id: 6, name: "Chettinad chicken biryani", type: "Non-Veg", meal: "Lunch / Dinner", category: "Rice Items", rate: "", sides: "Onion raita, Brinjal curry, Boiled egg" },
+  { id: 7, name: "Chicken 65", type: "Non-Veg", meal: "Lunch / Dinner", category: "Starters", rate: "", sides: "" },
+  { id: 8, name: "Nattu kozhi kuzhambu", type: "Non-Veg", meal: "Lunch / Dinner", category: "Side Dish", rate: "", sides: "Rice, idiyappam, parotta" },
+  { id: 9, name: "Meen kuzhambu", type: "Non-Veg", meal: "Lunch / Dinner", category: "Side Dish", rate: "", sides: "Steamed rice, appalam" },
+  { id: 10, name: "Vatha kuzhambu", type: "Veg", meal: "Lunch", category: "Side Dish", rate: "", sides: "Steamed rice, appalam" },
+  { id: 11, name: "Paruppu payasam", type: "Veg", meal: "Lunch / Dinner", category: "Desserts", rate: "", sides: "" },
+];
+const blank = (): MenuItem => ({ id: Date.now(), name: "", type: "Veg", meal: "Breakfast", category: "Main Course", rate: "", sides: "" });
+
+export default function CateringMenuAdminPage() {
+  const [items, setItems] = useState<MenuItem[]>(starter);
+  const [editing, setEditing] = useState<MenuItem | null>(null);
+  const [message, setMessage] = useState("");
+  useEffect(() => { const saved = localStorage.getItem("ss-foods-menu-admin"); if (saved) setItems(JSON.parse(saved)); }, []);
+  function save(next: MenuItem[]) { setItems(next); localStorage.setItem("ss-foods-menu-admin", JSON.stringify(next)); }
+  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!editing?.name.trim()) return; save(items.some(item => item.id === editing.id) ? items.map(item => item.id === editing.id ? editing : item) : [...items, editing]); setEditing(null); setMessage("Menu item saved."); }
+  return <main className="adminPage"><header className="adminHeader"><div><p className="kicker">SS FOODS · Private administration</p><h1>Tamil Nadu Menu Manager</h1><p>Add, edit, delete and price Tamil Nadu dishes shown to customers.</p></div><div className="adminHeaderActions"><a href="/admin">Admin Home</a><a href="/catering/custom-menu">View Customer Menu</a></div></header><section className="adminForm"><h2>{editing && items.some(item => item.id === editing.id) ? "Edit menu item" : "Add menu item"}</h2><form onSubmit={submit}><div className="formRow"><label>Item name<input required value={editing?.name ?? ""} onChange={e => setEditing({ ...(editing ?? blank()), name: e.target.value })}/></label><label>Rate per person (₹)<input type="number" min="0" value={editing?.rate ?? ""} onChange={e => setEditing({ ...(editing ?? blank()), rate: e.target.value })} placeholder="Enter your rate"/></label></div><div className="formRow"><label>Food type<select value={editing?.type ?? "Veg"} onChange={e => setEditing({ ...(editing ?? blank()), type: e.target.value as MenuItem["type"] })}><option>Veg</option><option>Non-Veg</option></select></label><label>Meal<select value={editing?.meal ?? "Breakfast"} onChange={e => setEditing({ ...(editing ?? blank()), meal: e.target.value })}><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Lunch / Dinner</option></select></label><label>Category<select value={editing?.category ?? "Main Course"} onChange={e => setEditing({ ...(editing ?? blank()), category: e.target.value })}>{["Welcome Drink","Sweet","Starters","Main Course","Rice Items","Side Dish","Desserts","Others"].map(value => <option key={value}>{value}</option>)}</select></label></div><label>Side-dish choices<input value={editing?.sides ?? ""} onChange={e => setEditing({ ...(editing ?? blank()), sides: e.target.value })} placeholder="Separate choices with commas"/></label><button>{editing ? "Save item" : "Start adding item"}</button>{editing && <button type="button" className="cancelEdit" onClick={() => setEditing(null)}>Cancel</button>}</form>{message && <p className="adminMessage">{message}</p>}</section><section className="bookingReport"><div className="reportHead"><div><p className="kicker">Tamil Nadu customer catalogue</p><h2>{items.length} menu items</h2></div><button onClick={() => { setEditing(blank()); setMessage(""); }}>Add new item</button></div><div className="reportTableWrap"><table><thead><tr><th>Item</th><th>Type</th><th>Meal</th><th>Category</th><th>Rate</th><th>Side dishes</th><th>Actions</th></tr></thead><tbody>{items.map(item => <tr key={item.id}><td><b>{item.name}</b></td><td><b style={{ color: item.type === "Veg" ? "#176b46" : "#a72c2c" }}>{item.type}</b></td><td>{item.meal}</td><td>{item.category}</td><td>{item.rate ? `₹${item.rate}` : "Not set"}</td><td>{item.sides || "—"}</td><td><button onClick={() => setEditing(item)}>Edit</button> <button className="deleteButton" onClick={() => { save(items.filter(row => row.id !== item.id)); setMessage("Menu item deleted."); }}>Delete</button></td></tr>)}</tbody></table></div></section></main>;
+}

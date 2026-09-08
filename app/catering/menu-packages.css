@@ -125,3 +125,5 @@
   letter-spacing: .6px;
   text-transform: uppercase;
 }
+
+.customMenuLink{display:inline-flex;align-items:center;gap:10px;margin:0 0 24px;padding:13px 18px;border-radius:6px;background:#7d2b21;color:#fff;text-decoration:none;font-weight:800}.customMenuLink span{font-size:20px}
