@@ -9,11 +9,12 @@ type StaffRole = "admin" | "viewer";
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export default function BookingReportsPage() {
+  const currentDate = new Date();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [role, setRole] = useState<StaffRole | null>(null);
   const [message, setMessage] = useState("");
-  const [year, setYear] = useState("All");
-  const [month, setMonth] = useState("All");
+  const [year, setYear] = useState(String(currentDate.getFullYear()));
+  const [month, setMonth] = useState(String(currentDate.getMonth() + 1).padStart(2, "0"));
   const [location, setLocation] = useState("All");
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<number | null>(null);
