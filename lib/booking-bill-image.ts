@@ -1,4 +1,5 @@
 import { formatTime12Hour } from "./format-time";
+import { formatDate } from "./date-format";
 
 export type CustomerBillBooking = { location: string; bookingDate: string; startTime: string; endTime: string; billNo: string; functionName: string; customerName: string; mobile: string; mobile2?: string; address?: string; createdAt?: string; amount?: number; advanceReceived?: number };
 
@@ -9,7 +10,7 @@ export function formatBookingAddedDate(createdAt?: string) {
     ? `${createdAt.replace(" ", "T")}Z` : createdAt;
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "long", year: "numeric" });
+  return formatDate(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
 }
 
 export function customerWhatsAppNumber(mobile: string) {
@@ -54,7 +55,7 @@ export async function createCustomerBill(booking: CustomerBillBooking): Promise<
     ] },
     { title: "Function Details", fields: [
       ["Location", booking.location],
-      ["Booking Date", new Date(`${booking.bookingDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })],
+      ["Booking Date", formatDate(booking.bookingDate)],
       ["Start Time", formatTime12Hour(booking.startTime || "17:00")],
       ["End Time", formatTime12Hour(booking.endTime || "22:00")],
       ["Function", booking.functionName],

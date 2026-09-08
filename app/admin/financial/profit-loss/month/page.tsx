@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "../../../../../lib/date-format";
 
 type Booking = { id: number; bookingDate: string; billNo: string; location: string; customerName: string; functionName: string; amount: number; advanceReceived: number };
 type Entry = { id: number; orderId?: string; expenseDate?: string; incomeDate?: string; location: string; category: string; description: string; amount: number };
@@ -53,12 +54,12 @@ export default function MonthlyDetailReport() {
     </section>
     <section className="financeTable"><h2>Booking revenue details</h2><div className="reportTableWrap"><table>
       <thead><tr>{["Date", "Bill No.", "Location", "Customer", "Function", "Revenue", "Advance collected", "Outstanding"].map(label => <th key={label}>{label}</th>)}</tr></thead>
-      <tbody>{report.bookings.map(row => <tr key={row.id}><td>{row.bookingDate}</td><td>{row.billNo || "—"}</td><td>{row.location}</td><td>{row.customerName}</td><td>{row.functionName}</td><td>{money(row.amount)}</td><td>{money(row.advanceReceived)}</td><td>{money(row.amount - row.advanceReceived)}</td></tr>)}{!report.bookings.length && <tr><td colSpan={8}>No bookings for this month.</td></tr>}</tbody>
+      <tbody>{report.bookings.map(row => <tr key={row.id}><td>{formatDate(row.bookingDate)}</td><td>{row.billNo || "—"}</td><td>{row.location}</td><td>{row.customerName}</td><td>{row.functionName}</td><td>{money(row.amount)}</td><td>{money(row.advanceReceived)}</td><td>{money(row.amount - row.advanceReceived)}</td></tr>)}{!report.bookings.length && <tr><td colSpan={8}>No bookings for this month.</td></tr>}</tbody>
       <tfoot><tr><th colSpan={5}>Total</th><th>{money(revenue)}</th><th>{money(collected)}</th><th>{money(revenue - collected)}</th></tr></tfoot>
     </table></div></section>
     {([{ title: "Additional revenue details", rows: report.income, total: additional, empty: "No additional revenue for this month." }, { title: "Expense details", rows: report.expenses, total: expenses, empty: "No expenses for this month." }]).map(section => <section className="financeTable" key={section.title}><h2>{section.title}</h2><div className="reportTableWrap"><table>
       <thead><tr><th>Date</th><th>Location</th><th>Category</th><th>Description</th><th>Amount</th></tr></thead>
-      <tbody>{section.rows.map(row => <tr key={row.id}><td>{row.incomeDate || row.expenseDate}</td><td>{row.location}</td><td>{row.category.replace(/Commission/gi, "Revenue")}</td><td>{row.description}</td><td>{money(row.amount)}</td></tr>)}{!section.rows.length && <tr><td colSpan={5}>{section.empty}</td></tr>}</tbody>
+      <tbody>{section.rows.map(row => <tr key={row.id}><td>{formatDate(row.incomeDate || row.expenseDate)}</td><td>{row.location}</td><td>{row.category.replace(/Commission/gi, "Revenue")}</td><td>{row.description}</td><td>{money(row.amount)}</td></tr>)}{!section.rows.length && <tr><td colSpan={5}>{section.empty}</td></tr>}</tbody>
       <tfoot><tr><th colSpan={4}>Total</th><th>{money(section.total)}</th></tr></tfoot>
     </table></div></section>)}
     <p className="financeNote">Booking revenue + additional revenue − expenses. Uses the same date and location rules as the summary; catering order expenses are excluded.</p>
