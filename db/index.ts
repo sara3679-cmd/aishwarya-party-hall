@@ -15,6 +15,19 @@ export function getDb() {
 let expensesReady: Promise<void> | null = null;
 export function ensureExpenseOrderColumn(){if(!env.DB)throw new Error("Cloudflare D1 binding `DB` is unavailable.");if(!expensesReady)expensesReady=(async()=>{const info=await env.DB.prepare("PRAGMA table_info(expenses)").all<{name:string}>(),columns=new Set((info.results??[]).map(column=>column.name));if(!columns.has("order_id"))await env.DB.prepare("ALTER TABLE expenses ADD COLUMN order_id TEXT DEFAULT '' NOT NULL").run();await env.DB.prepare("CREATE INDEX IF NOT EXISTS expenses_order_id_idx ON expenses (order_id)").run();})().catch(error=>{expensesReady=null;throw error;});return expensesReady;}
 
+let cctvPasswordReady: Promise<void> | null = null;
+export function ensureBookingCctvPasswordColumn() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!cctvPasswordReady) cctvPasswordReady = (async () => {
+    const info = await env.DB.prepare("PRAGMA table_info(bookings)").all<{ name: string }>();
+    const columns = new Set((info.results ?? []).map((column) => column.name));
+    if (!columns.has("cctv_password")) await env.DB.prepare("ALTER TABLE bookings ADD COLUMN cctv_password TEXT DEFAULT '' NOT NULL").run();
+    await env.DB.prepare("UPDATE bookings SET cctv_password = upper(substr(hex(randomblob(8)), 1, 8)) WHERE location = 'Padi' AND cctv_password = ''").run();
+    await env.DB.prepare("UPDATE bookings SET cctv_password = '' WHERE location <> 'Padi'").run();
+  })().catch((error) => { cctvPasswordReady = null; throw error; });
+  return cctvPasswordReady;
+}
+
 let orderAdditionsReady: Promise<void> | null = null;
 
 export function ensureOrderAdditionsTable() {

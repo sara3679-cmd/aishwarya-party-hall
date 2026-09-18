@@ -19,7 +19,7 @@
 .bookingReport tbody tr.latestRecord td,
 .bookingReport tbody tr.latestRecord td * { color: revert !important; font-weight: revert; }
 .bookingList article.latestSavedEntry.latestPadi,
-.bookingReport tbody tr.latestSavedEntry.latestPadi { background: #ffe1a6 !important; color: var(--ink) !important; box-shadow: inset 6px 0 0 #c98200 !important; }
+.bookingReport tbody tr.latestSavedEntry.latestPadi { background: #8d0b0f !important; color: #fff !important; box-shadow: inset 6px 0 0 #5f0508 !important; }
 .bookingList article.latestSavedEntry.latestKorattur,
 .bookingReport tbody tr.latestSavedEntry.latestKorattur { background: #ddc7ef !important; color: var(--ink) !important; box-shadow: inset 6px 0 0 #713c89 !important; }
 .bookingList article.latestSavedEntry *,
@@ -27,6 +27,8 @@
 .bookingReport tbody tr.latestSavedEntry td * { color: var(--ink) !important; font-weight: 800; }
 .bookingList article.latestSavedEntry::before { content: "LATEST SAVED ENTRY"; grid-column: 1 / -1; width: fit-content; margin-bottom: -8px; color: var(--maroon); font-size: 8px; font-weight: 900; letter-spacing: 1.3px; }
 .bookingReport tbody tr.latestSavedEntry .locationBadge { background: #fff !important; color: var(--maroon) !important; }
+.bookingList article.latestSavedEntry.latestPadi *,.bookingReport tbody tr.latestSavedEntry.latestPadi td,.bookingReport tbody tr.latestSavedEntry.latestPadi td * { color: #fff !important; }
+.bookingReport tbody tr.latestSavedEntry.latestPadi .locationBadge { background: #fff !important; color: #8d0b0f !important; }
 .floatingActions { position: fixed; right: 22px; bottom: 22px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .whatsappButton, .availabilityButton { color: #fff; padding: 14px 19px; border-radius: 999px; box-shadow: 0 8px 25px rgba(0,0,0,.24); font-size: 12px; font-weight: 800; letter-spacing: .3px; }
 .whatsappButton { background: #1f9d55; }

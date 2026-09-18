@@ -14,9 +14,9 @@ Book Aishwarya Party Hall – Korattur for birthdays, engagements, baby showers,
 
 - Duration: Strictly 5 hours
 - Capacity: Up to 150 guests
-- Includes: AC hall, stage, separate dining hall, music system, lift access, dressing/guest room and cleaning
+- Includes: AC hall, stage, screen-partitioned dining area within the hall, music system, lift access, dressing/guest room and cleaning
 - Electricity: EB charged separately at ₹20 per unit
-- Power backup: Not included
+- Power backup: 1 hour available for ₹1,500
 - Parking: Covered and outside parking
 - Catering: Customer’s choice; outside catering is allowed
 - Stage decoration: Charged separately

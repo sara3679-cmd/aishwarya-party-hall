@@ -17,6 +17,9 @@ export default function AvailabilityCalendar() {
   const [selectedDate, setSelectedDate] = useState("");
   const [bookings, setBookings] = useState<PublicBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -52,7 +55,7 @@ export default function AvailabilityCalendar() {
       const date = dateString(day);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const isPast = new Date(`${date}T00:00:00`) < today;
+      const isPast = mounted && new Date(`${date}T00:00:00`) < today;
       const dateBookings = bookings.filter((booking) => booking.bookingDate === date);
       const bookingCount = dateBookings.length;
       const isMorningSession = bookingCount === 1 && Number(dateBookings[0].startTime.split(":")[0]) < 12;

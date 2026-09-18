@@ -13,8 +13,11 @@ export const bookings = sqliteTable(
     functionName: text("function_name").notNull(),
     customerName: text("customer_name").notNull(),
     mobile: text("mobile").notNull(),
+    mobile2: text("mobile2").notNull().default(""),
+    address: text("address").notNull().default(""),
     amount: integer("amount").notNull().default(0),
     advanceReceived: integer("advance_received").notNull().default(0),
+    cctvPassword: text("cctv_password").notNull().default(""),
     status: text("status", { enum: ["confirmed", "cancelled"] })
       .notNull()
       .default("confirmed"),

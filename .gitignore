@@ -60,3 +60,6 @@ yarn-error.log*
 **/dist/
 **/.wrangler/
 /.offline-runtime/
+
+# generated local exports
+/output/

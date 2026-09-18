@@ -15,6 +15,13 @@
       "when": 1786997136159,
       "tag": "0001_sloppy_sharon_carter",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788856127235,
+      "tag": "0010_booking_customer_details",
+      "breakpoints": true
     }
   ]
 }

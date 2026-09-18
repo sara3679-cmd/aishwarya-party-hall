@@ -34,8 +34,12 @@ function advancesFrom(value: string | undefined): Advance[] {
 
 function dateLabel(value: string) {
   if (!value) return "—";
-  const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const [year, month, day] = value.split("-");
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthIndex = Number(month) - 1;
+  return /^\d{4}$/.test(year) && monthIndex >= 0 && monthIndex < monthNames.length && /^\d{2}$/.test(day)
+    ? `${day}-${monthNames[monthIndex]}-${year}`
+    : value;
 }
 
 function timeLabel(value: string) {

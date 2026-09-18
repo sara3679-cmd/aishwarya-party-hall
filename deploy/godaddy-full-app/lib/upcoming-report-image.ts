@@ -1,4 +1,5 @@
 import { formatTimeRange12Hour } from "./format-time";
+import { formatCurrentDate, formatDate } from "./date-format";
 
 export type UpcomingReportBooking = {
   id: number; location: string; bookingDate: string; startTime: string; endTime: string;
@@ -27,7 +28,7 @@ async function loadHallLogo() {
 export async function createUpcomingReportImages(rows: UpcomingReportBooking[], includeAmounts: boolean) {
   const logo = await loadHallLogo();
   const columns: Column[] = [
-    { title: "DATE & TIME", width: includeAmounts ? 190 : 220, emphasis: true, lines: (item) => [new Date(`${item.bookingDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), formatTimeRange12Hour(item.startTime, item.endTime)] },
+    { title: "DATE & TIME", width: includeAmounts ? 190 : 220, emphasis: true, lines: (item) => [formatDate(item.bookingDate), formatTimeRange12Hour(item.startTime, item.endTime)] },
     { title: "BILL / LOCATION", width: includeAmounts ? 140 : 170, emphasis: true, lines: (item) => [item.billNo || "—", item.location.toUpperCase()] },
     { title: "FUNCTION", width: includeAmounts ? 160 : 220, lines: (item) => [item.functionName] },
     { title: "CUSTOMER / MOBILE", width: includeAmounts ? 200 : 270, emphasis: true, lines: (item) => [item.customerName, item.mobile] },
@@ -67,7 +68,7 @@ export async function createUpcomingReportImages(rows: UpcomingReportBooking[], 
     const totalAdvance = pageRows.reduce((sum, item) => sum + (item.advanceReceived ?? 0), 0);
     context.fillStyle = ink; context.font = "600 17px Arial";
     context.fillText(includeAmounts ? `${pageRows.length} BOOKINGS   •   TOTAL ₹${totalAmount.toLocaleString("en-IN")}   •   RECEIVED ₹${totalAdvance.toLocaleString("en-IN")}   •   BALANCE ₹${(totalAmount - totalAdvance).toLocaleString("en-IN")}` : `${pageRows.length} CONFIRMED BOOKINGS   •   PADI & KORATTUR`, canvasWidth / 2, 244);
-    context.fillStyle = "#766660"; context.font = "500 15px Arial"; context.fillText(`Prepared on ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`, canvasWidth / 2, 275);
+    context.fillStyle = "#766660"; context.font = "500 15px Arial"; context.fillText(`Prepared on ${formatCurrentDate()}`, canvasWidth / 2, 275);
     context.fillStyle = maroon; context.font = "700 19px Georgia"; context.fillText("BOOKING DETAILS", canvasWidth / 2, 312);
     const bodyFontSize = includeAmounts ? (rowHeight < 48 ? 12 : 15) : (rowHeight < 48 ? 14 : 20);
     const secondLineGap = includeAmounts ? 21 : 26;

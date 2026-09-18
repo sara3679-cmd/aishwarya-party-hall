@@ -1,40 +1,53 @@
 #!/bin/zsh
-
 set -u
 
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SITE_URL="http://localhost:3010/admin"
-HEALTH_URL="http://localhost:3010/"
+# Resolve the Desktop symlink before locating the project.
+PROJECT_DIR="${0:A:h}"
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+SITE_URL="http://localhost:3010/"
 RUNTIME_DIR="$PROJECT_DIR/.offline-runtime"
 LOG_FILE="$RUNTIME_DIR/server.log"
 PID_FILE="$RUNTIME_DIR/server.pid"
 
-mkdir -p "$RUNTIME_DIR"
-cd "$PROJECT_DIR" || exit 1
-
-if ! command -v npm >/dev/null 2>&1; then
-  osascript -e 'display alert "Aishwarya Offline" message "Node.js is not available. Please contact the website administrator." as critical'
+fail() {
+  print -u2 -- "$1"
+  print -u2 -- "Server log: $LOG_FILE"
+  printf '\nPress Return to close this window. '
+  read -r reply
   exit 1
-fi
+}
 
-if ! curl --silent --fail "$HEALTH_URL" >/dev/null 2>&1; then
-  nohup npm run dev -- --host 127.0.0.1 --port 3010 >"$LOG_FILE" 2>&1 &
-  echo $! >"$PID_FILE"
+cd "$PROJECT_DIR" || exit 1
+mkdir -p "$RUNTIME_DIR" || exit 1
+command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || fail 'Node.js is missing. Please reinstall Node.js.'
+[[ -x node_modules/.bin/vinext ]] || fail 'The website packages are missing. Run npm ci in the Party Hall folder to restore them.'
 
+healthy() {
+  curl --noproxy '*' --silent --fail --connect-timeout 2 --max-time 5 "$SITE_URL" >/dev/null 2>&1
+}
+
+if ! healthy; then
+  if lsof -nP -iTCP:3010 -sTCP:LISTEN >/dev/null 2>&1; then
+    fail 'Port 3010 is already in use, but the website is not responding. Please check the existing server.'
+  fi
+  print -- 'Starting Aishwarya Party Hall…'
+  nohup npm run dev -- --host 127.0.0.1 --port 3010 --strictPort >"$LOG_FILE" 2>&1 < /dev/null &
+  server_pid=$!
+  print -- "$server_pid" > "$PID_FILE"
   ready=0
   for attempt in {1..90}; do
-    if curl --silent --fail "$HEALTH_URL" >/dev/null 2>&1; then
+    if healthy; then
       ready=1
       break
     fi
+    kill -0 "$server_pid" 2>/dev/null || break
     sleep 1
   done
-
   if [[ "$ready" -ne 1 ]]; then
-    osascript -e 'display alert "Aishwarya Offline" message "The offline website could not start. Please share the server log with the website administrator." as critical'
-    open "$LOG_FILE"
-    exit 1
+    tail -30 "$LOG_FILE"
+    fail 'The website could not start. Please check the server log shown above.'
   fi
 fi
 
-open -a "Google Chrome" "$SITE_URL" || open "$SITE_URL"
+open -a 'Google Chrome' "$SITE_URL" || fail 'The website is running, but Google Chrome could not open.'
+print -- "Aishwarya Party Hall is ready at $SITE_URL"
