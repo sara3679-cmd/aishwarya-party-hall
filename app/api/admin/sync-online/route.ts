@@ -2,6 +2,7 @@ import { asc } from "drizzle-orm";
 import { getDb, ensureExpenseOrderColumn, ensureOrderAdditionsTable } from "../../../../db";
 import { additionalIncome, bookings, expenses, orderAdditions } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
+import { env } from "cloudflare:workers";
 
 export async function POST(request: Request) {
   const staff = await getStaffSession(request);
@@ -13,11 +14,12 @@ export async function POST(request: Request) {
 
   await Promise.all([ensureExpenseOrderColumn(), ensureOrderAdditionsTable()]);
   const db = getDb();
-  const [bookingRows, expenseRows, incomeRows, additionRows] = await Promise.all([
+  const [bookingRows, expenseRows, incomeRows, additionRows, menuResult] = await Promise.all([
     db.select().from(bookings).orderBy(asc(bookings.id)),
     db.select().from(expenses).orderBy(asc(expenses.id)),
     db.select().from(additionalIncome).orderBy(asc(additionalIncome.id)),
     db.select().from(orderAdditions).orderBy(asc(orderAdditions.id)),
+    env.DB.prepare("SELECT id,name,category,meal,type,rate,sides,photo_path AS photoPath FROM catering_menu_items ORDER BY category,name").all(),
   ]);
 
   try {
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
         format: "aishwarya-offline-sync",
         version: 1,
         exportedAt: new Date().toISOString(),
-        data: { bookings: bookingRows, expenses: expenseRows, additionalIncome: incomeRows, orderAdditions: additionRows },
+        data: { bookings: bookingRows, expenses: expenseRows, additionalIncome: incomeRows, orderAdditions: additionRows, cateringMenuItems: menuResult.results ?? [] },
       }),
     });
     const text = await response.text();

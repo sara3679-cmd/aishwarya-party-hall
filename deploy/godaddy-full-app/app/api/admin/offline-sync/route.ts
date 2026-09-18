@@ -9,7 +9,7 @@ type SyncPayload = {
   format: "aishwarya-offline-sync";
   version: 1;
   exportedAt: string;
-  data: { bookings: Row[]; expenses: Row[]; additionalIncome: Row[]; orderAdditions: Row[] };
+  data: { bookings: Row[]; expenses: Row[]; additionalIncome: Row[]; orderAdditions: Row[]; cateringMenuItems: Row[] };
 };
 
 function authorized(request: Request) {
@@ -24,7 +24,7 @@ function validPayload(value: unknown): value is SyncPayload {
   const payload = value as Partial<SyncPayload>;
   const data = payload.data as SyncPayload["data"] | undefined;
   return payload.format === "aishwarya-offline-sync" && payload.version === 1 && typeof payload.exportedAt === "string" && Boolean(data)
-    && Array.isArray(data?.bookings) && Array.isArray(data?.expenses) && Array.isArray(data?.additionalIncome) && Array.isArray(data?.orderAdditions);
+    && Array.isArray(data?.bookings) && Array.isArray(data?.expenses) && Array.isArray(data?.additionalIncome) && Array.isArray(data?.orderAdditions) && Array.isArray(data?.cateringMenuItems);
 }
 
 export async function POST(request: Request) {
@@ -57,13 +57,15 @@ export async function POST(request: Request) {
       record_count INT NOT NULL,
       data_json LONGTEXT NOT NULL
     )`);
+    await connection.query("CREATE TABLE IF NOT EXISTS catering_menu_items (id VARCHAR(120) PRIMARY KEY, name VARCHAR(255) NOT NULL, category VARCHAR(80) NOT NULL, meal JSON NOT NULL, type VARCHAR(20) NOT NULL, rate VARCHAR(50) NOT NULL DEFAULT '', sides JSON NOT NULL, photo_path VARCHAR(500) NOT NULL DEFAULT '')");
 
     const [bookingsBefore] = await connection.query("SELECT * FROM bookings ORDER BY id");
     const [expensesBefore] = await connection.query("SELECT * FROM expenses ORDER BY id");
     const [incomeBefore] = await connection.query("SELECT * FROM additional_income ORDER BY id");
     const [additionsBefore] = await connection.query("SELECT * FROM order_additions_v5 ORDER BY id");
-    const snapshot = JSON.stringify({ bookings: bookingsBefore, expenses: expensesBefore, additionalIncome: incomeBefore, orderAdditions: additionsBefore });
-    const totalBefore = [bookingsBefore, expensesBefore, incomeBefore, additionsBefore].reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
+    const [menuBefore] = await connection.query("SELECT * FROM catering_menu_items ORDER BY category,name");
+    const snapshot = JSON.stringify({ bookings: bookingsBefore, expenses: expensesBefore, additionalIncome: incomeBefore, orderAdditions: additionsBefore, cateringMenuItems: menuBefore });
+    const totalBefore = [bookingsBefore, expensesBefore, incomeBefore, additionsBefore, menuBefore].reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
     const [backupResult] = await connection.execute<mysql.ResultSetHeader>(
       "INSERT INTO offline_sync_backups (source_exported_at, record_count, data_json) VALUES (?, ?, ?)",
       [payload.exportedAt, totalBefore, snapshot],
@@ -74,6 +76,7 @@ export async function POST(request: Request) {
     await connection.query("DELETE FROM additional_income");
     await connection.query("DELETE FROM expenses");
     await connection.query("DELETE FROM bookings");
+    await connection.query("DELETE FROM catering_menu_items");
 
     for (const row of payload.data.bookings) await connection.execute(
       "INSERT INTO bookings (id, location, booking_date, start_time, end_time, bill_no, function_name, customer_name, mobile, amount, advance_received, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -91,6 +94,10 @@ export async function POST(request: Request) {
       "INSERT INTO order_additions_v5 (id, order_id, customer_name, mobile_no, function_name, customer_address, venue, bill_date, function_date, function_time, meal_session, food_type, item_name, original_qty, unit, rate, discount, discount_qty, discount_rate, advance_entries, advance_total, remarks, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [row.id, row.orderId, row.customerName ?? "", row.mobileNo ?? "", row.functionName ?? "", row.customerAddress ?? "", row.venue ?? "", row.billDate ?? "", row.functionDate, row.functionTime, row.mealSession, row.foodType, row.itemName, row.originalQty ?? 0, row.unit, row.rate, row.discount ?? 0, row.discountQty ?? 0, row.discountRate ?? 0, typeof row.advanceEntries === "string" ? row.advanceEntries : JSON.stringify(row.advanceEntries ?? []), row.advanceTotal ?? 0, row.remarks ?? "", row.createdAt, row.updatedAt],
     );
+    for (const row of payload.data.cateringMenuItems) await connection.execute(
+      "INSERT INTO catering_menu_items (id,name,category,meal,type,rate,sides,photo_path) VALUES (?,?,?,?,?,?,?,?)",
+      [row.id, row.name, row.category, typeof row.meal === "string" ? row.meal : JSON.stringify(row.meal ?? []), row.type, row.rate ?? "", typeof row.sides === "string" ? row.sides : JSON.stringify(row.sides ?? []), row.photoPath ?? row.photo_path ?? ""],
+    );
     await connection.commit();
 
     return Response.json({
@@ -101,6 +108,7 @@ export async function POST(request: Request) {
         expenses: payload.data.expenses.length,
         additionalIncome: payload.data.additionalIncome.length,
         orderAdditions: payload.data.orderAdditions.length,
+        cateringMenuItems: payload.data.cateringMenuItems.length,
       },
     });
   } catch (error) {
