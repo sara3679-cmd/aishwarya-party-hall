@@ -5,17 +5,23 @@ import * as schema from "./schema";
 let pool: mysql.Pool | undefined;
 let database: MySql2Database<typeof schema> | undefined;
 
+function environmentValue(...names: string[]) {
+  return names.map(name => process.env[name]).find(Boolean);
+}
+
 export function getDb() {
   if (database) return database;
   const connectionString = process.env.DATABASE_URL;
   pool = connectionString
     ? mysql.createPool({ uri: connectionString, connectionLimit: 10 })
     : mysql.createPool({
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT || 3306),
-        database: process.env.DB_NAME,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
+        // GoDaddy shows the managed MySQL connection as app secrets.  It can
+        // use either DB_* or MYSQL_* names, so accept both formats.
+        host: environmentValue("DB_HOST", "MYSQL_HOST", "DATABASE_HOST"),
+        port: Number(environmentValue("DB_PORT", "MYSQL_PORT", "DATABASE_PORT") || 3306),
+        database: environmentValue("DB_NAME", "MYSQL_DATABASE", "DATABASE_NAME"),
+        user: environmentValue("DB_USER", "MYSQL_USER", "DATABASE_USER"),
+        password: environmentValue("DB_PASSWORD", "MYSQL_PASSWORD", "DATABASE_PASSWORD"),
         connectionLimit: 10,
       });
   database = drizzle(pool, { schema, mode: "default" });
