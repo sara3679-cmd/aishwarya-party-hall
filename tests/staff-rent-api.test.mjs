@@ -19,4 +19,5 @@ test('admin access, validated records, and stale-write protection',async () => {
  assert.equal((await PUT(req({data,revision:0}))).status,200);
  assert.equal((await PUT(req({data,revision:0}))).status,409);
  const response = await GET(new Request('https://example.com')); assert.match(response.headers.get('cache-control'),/no-store/); assert.equal((await response.json()).revision,1);
+ assert.equal((await PUT(req({data,revision:1},'https://www.aishwaryapartyhall.in'))).status,200);
 });

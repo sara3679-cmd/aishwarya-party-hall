@@ -12,7 +12,9 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   if ((await getStaffSession(request))?.role !== 'admin') return json({ error: 'Administrator access required' }, 403);
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) return json({ error: 'Invalid request origin' }, 403);
+  // The hosting proxy forwards an internal URL; allow the public site origin explicitly.
+  const allowedOrigins = new Set([new URL(request.url).origin, 'https://www.aishwaryapartyhall.in', 'https://aishwaryapartyhall.in']);
+  if (origin && !allowedOrigins.has(origin)) return json({ error: 'Invalid request origin' }, 403);
   let body;
   try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (!body || !validRecords(body.data) || !Number.isSafeInteger(body.revision) || body.revision < 0) return json({ error: 'Invalid salary or rent records' }, 400);
