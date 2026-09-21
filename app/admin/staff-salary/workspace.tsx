@@ -268,16 +268,19 @@ export function StaffRentWorkspace({ kind }: { kind: 'Salary' | 'Rent' }) {
 
   async function downloadSalarySlipImage(bill: Bill, openWhatsApp = false) {
     const canvas = document.createElement('canvas');
-    canvas.width = 1200; canvas.height = 1820;
+    canvas.width = 1200; canvas.height = 1980;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const previousAdvance = Math.max(0, data.entries.filter(entry => entry.employee === bill.entity && entry.kind === 'Advance' && entry.date < `${bill.month}-01`).reduce((sum, entry) => sum + entry.amount, 0) - data.bills.filter(item => item.entity === bill.entity && item.kind === 'Salary' && item.month < bill.month).reduce((sum, item) => sum + item.recovery, 0));
-    ctx.fillStyle = '#fffaf1'; ctx.fillRect(0, 0, 1200, 1420);
+    ctx.fillStyle = '#fffaf1'; ctx.fillRect(0, 0, 1200, 1980);
     ctx.fillStyle = '#830b12'; ctx.fillRect(0, 0, 1200, 245);
     ctx.fillStyle = '#d89b28'; ctx.fillRect(0, 235, 1200, 10);
-    ctx.fillStyle = '#ffffff'; ctx.font = '700 28px Arial'; ctx.fillText('AISHWARYA PARTY HALL', 76, 86);
-    ctx.font = '700 58px Georgia'; ctx.fillText('Salary Slip · சம்பள சீட்டு', 76, 155);
-    ctx.font = '400 24px Arial'; ctx.fillText(`${bill.location} · Chennai`, 76, 204);
+    const logo = new Image();
+    await new Promise<void>(resolve => { logo.onload = () => resolve(); logo.onerror = () => resolve(); logo.src = '/images/brand/aishwarya-party-hall-logo.jpg'; });
+    if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 70, 48, 125, 125);
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 28px Arial'; ctx.fillText('AISHWARYA PARTY HALL', 225, 86);
+    ctx.font = '700 52px Georgia'; ctx.fillText('Salary Slip · சம்பள சீட்டு', 225, 150);
+    ctx.font = '400 24px Arial'; ctx.fillText(`${bill.location} · Chennai`, 225, 204);
     ctx.fillStyle = '#fff7dc'; ctx.fillRect(875, 71, 245, 92);
     ctx.fillStyle = '#830b12'; ctx.font = '700 29px Arial'; ctx.textAlign = 'center'; ctx.fillText(bill.month, 997, 128); ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff'; ctx.fillRect(60, 295, 1080, 165); ctx.strokeStyle = '#e2c78d'; ctx.lineWidth = 2; ctx.strokeRect(60, 295, 1080, 165);
@@ -285,16 +288,21 @@ export function StaffRentWorkspace({ kind }: { kind: 'Salary' | 'Rent' }) {
     ctx.fillStyle = '#830b12'; ctx.font = '700 43px Georgia'; ctx.fillText(bill.name, 98, 415); ctx.font = '700 31px Arial'; ctx.fillText(bill.month, 760, 410);
     const currentAdvanceForSlip = currentAdvanceForBill(bill);
     const additionNote = additionDetail(bill);
-    const rows = [['Monthly salary · மாத சம்பளம்', money(bill.basic)], ['Unpaid leave · ஊதியமில்லா விடுப்பு', `${unpaidLeaveDays(data, bill.entity, bill.month)} day(s) · −${money(bill.leave)}`], ['Salary after leave · விடுப்புக்குப் பின் சம்பளம்', money(bill.basic - bill.leave)], ['Previous advance balance · முன் முன்பணம்', money(previousAdvance)], ['Current month advance · இந்த மாத முன்பணம்', money(currentAdvanceForSlip)], ['Total advance · மொத்த முன்பணம்', money(previousAdvance + currentAdvanceForSlip)], ['Advance recovery · முன்பணம் பிடித்தம்', `−${money(bill.recovery)}`], ['Next month advance balance · அடுத்த மாத முன்பணம்', money(Math.max(0, previousAdvance + currentAdvanceForSlip - bill.recovery))], [additionNote ? `Other additions · கூடுதல் தொகை (${additionNote})` : 'Other additions · கூடுதல் தொகை', `+${money(bill.extra)}`], ['Paid · செலுத்தியது', money(paid(bill))], ['Balance amount · மீதம்', money(balance(bill))]];
+    const rows = [['# Salary · சம்பளம்', ''], ['Monthly salary · மாத சம்பளம்', money(bill.basic)], ['Unpaid leave · ஊதியமில்லா விடுப்பு', `${unpaidLeaveDays(data, bill.entity, bill.month)} day(s) · −${money(bill.leave)}`], ['Salary after leave · விடுப்புக்குப் பின் சம்பளம்', money(bill.basic - bill.leave)], ['# Advance · முன்பணம்', ''], ['Previous advance balance · முன் முன்பணம்', money(previousAdvance)], ['Current month advance · இந்த மாத முன்பணம்', money(currentAdvanceForSlip)], ['Total advance · மொத்த முன்பணம்', money(previousAdvance + currentAdvanceForSlip)], ['Advance recovery · முன்பணம் பிடித்தம்', `−${money(bill.recovery)}`], ['Next month advance balance · அடுத்த மாத முன்பணம்', money(Math.max(0, previousAdvance + currentAdvanceForSlip - bill.recovery))], ['# Other additions · கூடுதல் தொகை', ''], [additionNote ? `Other additions · கூடுதல் தொகை (${additionNote})` : 'Other additions · கூடுதல் தொகை', `+${money(bill.extra)}`], ['Paid · செலுத்தியது', money(paid(bill))], ['Balance amount · மீதம்', money(balance(bill))]];
     let y = 535;
     for (const [label, amount] of rows) {
+      if (label.startsWith('#')) {
+        ctx.fillStyle = '#830b12'; ctx.font = '700 21px Arial'; ctx.fillText(label.slice(2), 90, y);
+        ctx.strokeStyle = '#d89b28'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(90, y + 16); ctx.lineTo(1110, y + 16); ctx.stroke(); y += 58;
+        continue;
+      }
       const isTotal = label.startsWith('Balance amount');
       if (isTotal) { ctx.fillStyle = '#fff2d7'; ctx.fillRect(60, y - 43, 1080, 76); }
       ctx.fillStyle = isTotal ? '#830b12' : '#3f322d'; ctx.font = `${isTotal ? '700' : '600'} ${label.startsWith('Other additions') && additionNote ? '20' : '26'}px Arial`; ctx.fillText(label, 90, y);
       ctx.font = `${isTotal ? '700' : '600'} 30px Arial`; ctx.textAlign = 'right'; ctx.fillText(amount, 1110, y); ctx.textAlign = 'left';
       ctx.strokeStyle = '#e9ded4'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(90, y + 28); ctx.lineTo(1110, y + 28); ctx.stroke(); y += 100;
     }
-    ctx.fillStyle = '#830b12'; ctx.fillRect(60, 1685, 1080, 88); ctx.fillStyle = '#ffffff'; ctx.font = '700 24px Arial'; ctx.textAlign = 'center'; ctx.fillText(balance(bill) === 0 ? 'PAYMENT SETTLED · பணம் செலுத்தப்பட்டது' : 'PAYMENT PENDING · பணம் நிலுவையில் உள்ளது', 600, 1739); ctx.textAlign = 'left';
+    ctx.fillStyle = '#830b12'; ctx.fillRect(60, 1825, 1080, 88); ctx.fillStyle = '#ffffff'; ctx.font = '700 24px Arial'; ctx.textAlign = 'center'; ctx.fillText(balance(bill) === 0 ? 'PAYMENT SETTLED · பணம் செலுத்தப்பட்டது' : 'PAYMENT PENDING · பணம் நிலுவையில் உள்ளது', 600, 1879); ctx.textAlign = 'left';
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
     if (!blob) return;
     const fileName = `Aishwarya-Party-Hall-Salary-Slip-${bill.name.replace(/\s+/g, '-')}-${bill.month}.png`;
