@@ -1,6 +1,6 @@
 export type Employee = { id: string; name: string; location: string; phone: string; role: string; joined: string; salary: number; recovery: number; paidLeave: number; description?: string; closing?: string };
 export type Entry = { id: string; employee: string; date: string; kind: string; amount: number; note: string };
-export type Hall = { id: string; location: string; address: string; owner: string; phone: string; rent: number; deposit: number; start: string; renewal: string };
+export type Hall = { id: string; location: string; address: string; owner: string; phone: string; rent: number; deposit: number; start: string; renewal: string; agreementNo?: string; agreementEnd?: string; noticeDays?: number; dueDay?: number; increaseType?: string; increaseValue?: number; utilityNote?: string; bankDetails?: string };
 export type Payment = { id: string; date: string; amount: number; method: string; reference: string };
 export type Bill = { id: string; entity: string; name: string; location: string; month: string; kind: string; basic: number; leave: number; recovery: number; debit: number; extra: number; total: number; payments: Payment[] };
 export type Records = { version: 1; employees: Employee[]; entries: Entry[]; halls: Hall[]; bills: Bill[] };
@@ -47,7 +47,7 @@ export function validRecords(value: unknown): value is Records {
   try {
     return v.version === 1 && [v.employees,v.entries,v.halls,v.bills].every(Array.isArray)
       && v.employees.every(e => [e.id,e.name,e.phone,e.role,e.location].every(text) && date(e.joined) && [e.salary,e.recovery,e.paidLeave].every(number) && (e.description === undefined || text(e.description)) && (e.closing === undefined || e.closing === '' || date(e.closing)))
-      && v.halls.every(h => [h.id,h.location,h.address,h.owner,h.phone].every(text) && [h.start,h.renewal].every(date) && [h.rent,h.deposit].every(number))
+      && v.halls.every(h => [h.id,h.location,h.address,h.owner,h.phone].every(text) && [h.start,h.renewal].every(date) && [h.rent,h.deposit].every(number) && (h.agreementNo === undefined || text(h.agreementNo)) && (h.agreementEnd === undefined || h.agreementEnd === '' || date(h.agreementEnd)) && (h.noticeDays === undefined || number(h.noticeDays)) && (h.dueDay === undefined || number(h.dueDay)) && (h.increaseType === undefined || text(h.increaseType)) && (h.increaseValue === undefined || number(h.increaseValue)) && (h.utilityNote === undefined || text(h.utilityNote)) && (h.bankDetails === undefined || text(h.bankDetails)))
       && v.entries.every(e => [e.id,e.employee,e.note].every(text) && date(e.date) && number(e.amount) && ['Advance','Advance recovery','Debit','Paid leave','Unpaid leave','Bonus / overtime','Reimbursement'].includes(e.kind) && v.employees.some(x=>x.id===e.employee))
       && v.bills.every(b => [b.id,b.entity,b.name,b.location].every(text) && /^\d{4}-\d{2}$/.test(b.month) && ['Salary','Rent'].includes(b.kind) && [b.basic,b.leave,b.recovery,b.debit,b.extra,b.total].every(number) && Array.isArray(b.payments) && b.payments.every(p=>[p.id,p.method,p.reference].every(text) && date(p.date) && number(p.amount)) && paid(b)<=b.total)
       && [v.employees,v.entries,v.halls,v.bills].every(list=>new Set(list.map(x=>x.id)).size===list.length);

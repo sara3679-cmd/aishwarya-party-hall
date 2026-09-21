@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { advanceBalance, balance, deleteStaffRentRecord, emptyRecords, paid, salaryBill, unpaidLeaveDays, validRecords, type Bill, type Employee, type Entry, type Records } from './model';
 import './style.css';
+import { HallRentWorkspace } from './hall-rent-workspace';
 
 const KEY = 'aph-staff-rent-v1';
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -20,7 +21,11 @@ function Input({ name, label, type = 'text', value, required = true }: { name: s
 }
 
 export function StaffRentWorkspace({ kind }: { kind: 'Salary' | 'Rent' }) {
-  const isSalary = kind === 'Salary';
+  return kind === 'Salary' ? <StaffSalaryWorkspace /> : <HallRentWorkspace />;
+}
+
+function StaffSalaryWorkspace() {
+  const isSalary = true;
   const [data, setData] = useState<Records>(emptyRecords);
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState('Checking admin access…');
