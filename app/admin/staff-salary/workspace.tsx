@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { advanceBalance, balance, deleteStaffRentRecord, emptyRecords, paid, salaryBill, unpaidLeaveDays, validRecords, type Bill, type Employee, type Entry, type Records } from './model';
+import { advanceBalance, balance, deleteStaffRentRecord, paid, salaryBill, unpaidLeaveDays, validRecords, type Bill, type Employee, type Entry, type Records } from './model';
 import './style.css';
 import { HallRentWorkspace } from './hall-rent-workspace';
 
-const KEY = 'aph-staff-rent-v1';
+import { useOnlineRecords } from './use-online-records';
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const uid = () => crypto.randomUUID();
 const money = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -26,9 +26,7 @@ export function StaffRentWorkspace({ kind }: { kind: 'Salary' | 'Rent' }) {
 
 function StaffSalaryWorkspace() {
   const isSalary = true;
-  const [data, setData] = useState<Records>(emptyRecords);
-  const [ready, setReady] = useState(false);
-  const [message, setMessage] = useState('Checking admin access…');
+  const { data, ready, message, setMessage, save } = useOnlineRecords();
   const [month, setMonth] = useState(today().slice(0, 7));
   const [tab, setTab] = useState('Salary');
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
@@ -42,44 +40,11 @@ function StaffSalaryWorkspace() {
   const [reportEmployee, setReportEmployee] = useState('');
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
 
-  useEffect(() => {
-    fetch('/api/auth/session').then(async response => {
-      if (!response.ok || (await response.json()).role !== 'admin') throw Error('Sign in as an administrator to access salary records.');
-      const saved = localStorage.getItem(KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (!validRecords(parsed)) throw Error('Saved salary records are invalid. Restore a backup before continuing.');
-        const cleaned = {
-          ...parsed,
-          employees: parsed.employees.map(employee => ({ ...employee, description: employee.description ?? '', closing: employee.closing ?? '' })),
-          entries: parsed.entries.filter((entry: Entry) => entry.kind !== 'Debit'),
-          bills: parsed.bills.map((bill: Bill) => bill.kind === 'Salary' ? { ...bill, debit: 0 } : bill),
-        };
-        localStorage.setItem(KEY, JSON.stringify(cleaned));
-        setData(cleaned);
-      }
-      setReady(true);
-      setMessage('');
-    }).catch(error => setMessage(error.message));
-    const timer = setInterval(() => setDate(today()), 60000);
-    return () => clearInterval(timer);
-  }, []);
+  useEffect(() => { const timer = setInterval(() => setDate(today()), 60000); return () => clearInterval(timer); }, []);
 
   useEffect(() => {
     if (leaveEditor) document.getElementById('leave-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [leaveEditor]);
-
-  function save(next: Records, confirmation = 'Saved offline on this computer.') {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-      setData(next);
-      setMessage(confirmation);
-      return true;
-    } catch {
-      setMessage('Could not save. Download a backup and check browser storage.');
-      return false;
-    }
-  }
 
   function recalculateFinalisedSalaries() {
     const revisedBills = data.bills.map(bill => {
@@ -325,7 +290,7 @@ function StaffSalaryWorkspace() {
   if (!ready) return <main className="adminPage sr"><h1>Staff Salary</h1><p className="adminMessage">{message}</p></main>;
 
   return <main className="adminPage sr"><div className="sr-screen">
-    <header className="adminHeader"><div><p className="kicker">AISHWARYA PARTY HALL · OFFLINE ADMIN</p><h1>{isSalary ? 'Staff Salary' : 'Hall Rent'}</h1><p>Simple monthly salary, leave and payment records.</p></div><a href="/admin">← Admin Home</a></header>
+    <header className="adminHeader"><div><p className="kicker">AISHWARYA PARTY HALL · ADMIN</p><h1>{isSalary ? 'Staff Salary' : 'Hall Rent'}</h1><p>Simple monthly salary, leave and payment records.</p></div><a href="/admin">← Admin Home</a></header>
     {!isSalary ? <p className="sr-notice">Hall Rent is available in the existing records. This simplified workspace is designed for Staff Salary.</p> : <>
       <div className="sr-toolbar"><label>Salary month<input type="month" value={month} onChange={event => setMonth(event.target.value)} /></label><span>Enter an Advance recovery entry only for the month you want to deduct it.</span></div>
       <nav aria-label="Staff salary sections">{[{ id: 'Salary', label: 'Staff Salary / Pay Slip' }, { id: 'Staff', label: 'Add Staff' }, { id: 'Leave', label: 'Staff Leave' }, { id: 'Advance', label: 'Staff Advance' }, { id: 'Report', label: 'Staff Salary Report' }, { id: 'Payments', label: 'Finalised Salary & Payments' }, { id: 'Backup', label: 'Backup' }].map(item => <button key={item.id} aria-current={tab === item.id ? 'page' : undefined} onClick={() => { setTab(item.id); setSelectedEmployee(null); }}>{item.label}</button>)}</nav>
@@ -352,7 +317,7 @@ function StaffSalaryWorkspace() {
 
       {tab === 'Payments' && <section className="payments-page"><div className="payments-heading"><div><p className="kicker">STAFF PAYROLL</p><h2>Finalised Salary & Payments</h2><p>Open the pay slip or record the remaining amount.</p></div></div>{finalised.length === 0 ? <p className="empty-state">No finalised salary for {month}.</p> : <div className="payment-list">{finalised.map(bill => <article className="payment-card" key={bill.id}><div className="payment-summary"><div><h3>{bill.name}</h3><p>{bill.location} · Salary month {bill.month}</p></div><div className="payment-total"><span>Balance amount</span><b>{money(balance(bill))}</b></div><button onClick={() => setSlip(bill)}>View salary slip</button></div><div className="payment-stats"><span><small>Net salary</small><b>{money(bill.total)}</b></span><span><small>Paid</small><b>{money(paid(bill))}</b></span><span><small>Status</small><b className={balance(bill) === 0 ? 'payment-settled' : 'payment-pending'}>{balance(bill) === 0 ? 'Paid' : 'Pending'}</b></span></div>{balance(bill) > 0 && <form className="payment-form" onSubmit={event => submit(event, form => recordPayment(form, bill))}><Input name="date" label="Payment date" type="date" value={date}/><Input name="amount" label="Amount to record ₹" type="number"/><label>Method<select name="method"><option>UPI</option><option>Bank transfer</option><option>Cash</option><option>Cheque</option></select></label><Input name="reference" label="Reference (optional)" required={false}/><button>Record payment</button></form>}{bill.payments.length > 0 && <div className="payment-history">{bill.payments.map(payment => <p key={payment.id}><b>{displayDate(payment.date)}</b><span>{payment.method}</span><span>{payment.reference || '—'}</span><strong>{money(payment.amount)}</strong></p>)}</div>}</article>)}</div>}</section>}
 
-      {tab === 'Backup' && <section><h2>Offline backup</h2><p>Download a backup before changing browsers or computers. It contains staff salary, leave, advances and payment records.</p><button onClick={exportBackup}>Download Backup</button><label className="restore">Restore backup<input type="file" accept="application/json,.json" onChange={async event => { const file = event.target.files?.[0]; if (!file) return; try { const restored = JSON.parse(await file.text()); if (!validRecords(restored)) throw Error(); if (confirm('Replace current staff salary records with this backup?')) save(restored, 'Backup restored.'); } catch { setMessage('This backup file is invalid.'); } event.target.value = ''; }} /></label></section>}
+      {tab === 'Backup' && <section><h2>Database backup</h2><p>Download a copy of the database records for safekeeping. It contains staff salary, leave, advances and payment records.</p><button onClick={exportBackup}>Download Backup</button><label className="restore">Restore backup<input type="file" accept="application/json,.json" onChange={async event => { const file = event.target.files?.[0]; if (!file) return; try { const restored = JSON.parse(await file.text()); if (!validRecords(restored)) throw Error(); if (confirm('Replace current staff salary records with this backup?')) save(restored, 'Backup restored.'); } catch { setMessage('This backup file is invalid.'); } event.target.value = ''; }} /></label></section>}
     </>}
   </div>{slip && <div className="sr-slip"><div className="sr-screen sr-toolbar"><button onClick={() => downloadSalarySlipImage(slip, true)}>Download & Open WhatsApp</button><button className="sr-text-button" onClick={() => downloadSalarySlipImage(slip)}>Download bill only</button><button onClick={() => window.print()}>Print / Save PDF</button><button onClick={() => setSlip(null)}>Close</button></div><header className="salary-slip-brand"><img src="/images/brand/aishwarya-party-hall-logo.jpg" alt="Aishwarya Party Hall logo"/><div><p>AISHWARYA PARTY HALL</p><h1>Salary Slip · சம்பள சீட்டு</h1><span>{slip.location} · Chennai</span></div><b>{slip.month}</b></header><section className="salary-slip-person"><div><span>STAFF MEMBER · பணியாளர்</span><h2>{slip.name}</h2></div><div><span>PAY PERIOD · சம்பள மாதம்</span><b>{slip.month}</b></div></section><dl><div className="slip-group"><b>Salary · சம்பளம்</b></div><div><dt>Monthly salary · மாத சம்பளம்</dt><dd>{money(slip.basic)}</dd></div><div><dt>Unpaid leave · ஊதியமில்லா விடுப்பு</dt><dd>{unpaidLeaveDays(data, slip.entity, slip.month)} day(s) · −{money(slip.leave)}</dd></div><div><dt>Salary after leave · விடுப்புக்குப் பின் சம்பளம்</dt><dd>{money(slip.basic - slip.leave)}</dd></div><div className="slip-group"><b>Advance · முன்பணம்</b></div><div><dt>Previous advance balance · முன் முன்பணம்</dt><dd>{money(slipPreviousAdvance)}</dd></div><div><dt>Current month advance · இந்த மாத முன்பணம்</dt><dd>{money(currentAdvanceForBill(slip))}</dd></div><div><dt>Total advance · மொத்த முன்பணம்</dt><dd>{money(slipPreviousAdvance + currentAdvanceForBill(slip))}</dd></div><div><dt>Advance recovery · முன்பணம் பிடித்தம்</dt><dd>−{money(slip.recovery)}</dd></div><div><dt>Next month advance balance · அடுத்த மாத முன்பணம்</dt><dd>{money(Math.max(0, slipPreviousAdvance + currentAdvanceForBill(slip) - slip.recovery))}</dd></div><div className="slip-group"><b>Other additions · கூடுதல் தொகை</b></div><div><dt>Other additions · கூடுதல் தொகை{additionDetail(slip) ? <small>{additionDetail(slip)}</small> : null}</dt><dd>+{money(slip.extra)}</dd></div><div><dt>Paid · செலுத்தியது</dt><dd>{money(paid(slip))}</dd></div><div className="balance-line"><dt>Balance amount · மீதம்</dt><dd>{money(balance(slip))}</dd></div></dl><footer className="salary-slip-footer"><b>{balance(slip) === 0 ? 'PAYMENT SETTLED · பணம் செலுத்தப்பட்டது' : 'PAYMENT PENDING · பணம் நிலுவையில் உள்ளது'}</b><span>Generated {displayDate(date)} · Aishwarya Party Hall · Padi & Korattur</span></footer></div>}</main>;
 }

@@ -44,3 +44,19 @@ export async function ensureBookingCustomerColumns() {
   await pool!.query("UPDATE bookings SET cctv_password = UPPER(SUBSTRING(SHA2(CONCAT(UUID(), RAND()), 256), 1, 8)) WHERE location = 'Padi' AND cctv_password = ''");
   await pool!.query("UPDATE bookings SET cctv_password = '' WHERE location <> 'Padi'");
 }
+
+export async function staffRentStore() {
+  getDb();
+  await pool!.query("CREATE TABLE IF NOT EXISTS staff_rent_records (id INT PRIMARY KEY, payload LONGTEXT NOT NULL, revision INT NOT NULL DEFAULT 0)");
+  await pool!.execute("INSERT IGNORE INTO staff_rent_records (id, payload, revision) VALUES (1, ?, 0)", [JSON.stringify({ version: 1, employees: [], entries: [], halls: [], bills: [] })]);
+  return {
+    async read() {
+      const [rows] = await pool!.query<mysql.RowDataPacket[]>("SELECT payload, revision FROM staff_rent_records WHERE id = 1");
+      return { data: JSON.parse(rows[0].payload), revision: Number(rows[0].revision) };
+    },
+    async write(data: unknown, revision: number) {
+      const [result] = await pool!.execute<mysql.ResultSetHeader>("UPDATE staff_rent_records SET payload = ?, revision = revision + 1 WHERE id = 1 AND revision = ?", [JSON.stringify(data), revision]);
+      return result.affectedRows === 1;
+    },
+  };
+}

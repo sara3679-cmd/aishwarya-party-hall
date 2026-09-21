@@ -83,3 +83,18 @@ export function ensureOrderAdditionsTable() {
   }
   return orderAdditionsReady;
 }
+
+export async function staffRentStore() {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_rent_records (id INTEGER PRIMARY KEY, payload TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0)").run();
+  await env.DB.prepare("INSERT OR IGNORE INTO staff_rent_records (id, payload, revision) VALUES (1, ?, 0)").bind(JSON.stringify({ version: 1, employees: [], entries: [], halls: [], bills: [] })).run();
+  return {
+    async read() {
+      const row = await env.DB.prepare("SELECT payload, revision FROM staff_rent_records WHERE id = 1").first<{ payload: string; revision: number }>();
+      return { data: JSON.parse(row!.payload), revision: row!.revision };
+    },
+    async write(data: unknown, revision: number) {
+      const result = await env.DB.prepare("UPDATE staff_rent_records SET payload = ?, revision = revision + 1 WHERE id = 1 AND revision = ?").bind(JSON.stringify(data), revision).run();
+      return result.meta.changes === 1;
+    },
+  };
+}
