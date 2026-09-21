@@ -1,49 +1,358 @@
 "use client";
+
 import { useEffect, useState, type FormEvent } from 'react';
-import { advanceBalance, deleteStaffRentRecord, balance, emptyRecords, paid, salaryBill, validRecords, type Bill, type Records } from './model';
+import { advanceBalance, balance, deleteStaffRentRecord, emptyRecords, paid, salaryBill, unpaidLeaveDays, validRecords, type Bill, type Employee, type Entry, type Records } from './model';
 import './style.css';
+import { HallRentWorkspace } from './hall-rent-workspace';
+
 const KEY = 'aph-staff-rent-v1';
-const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-const money = (n: number) => new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR'}).format(n);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const uid = () => crypto.randomUUID();
-function Field({name,label,type='text',value,required=true}:{name:string;label:string;type?:string;value?:string|number;required?:boolean}) { return <label>{label}<input name={name} type={type} defaultValue={value} required={required} min={type==='number'?0:undefined} step={type==='number'?'0.01':undefined}/></label>; }
-function Location({value}:{value?:string}){return <label>Location<select name="location" defaultValue={value}><option>Padi</option><option>Korattur</option></select></label>;}
-export function StaffRentWorkspace({kind}:{kind:'Salary'|'Rent'}){
- const [editingId,setEditingId]=useState<string|null>(null);
- const isSalary=kind==='Salary';
- const title=isSalary?'Staff Salary':'Hall Rent';
- const tabs=isSalary?['Overview','Employees','Leave & Ledger','Payments','Backup']:['Overview','Hall Details','Payments','Backup'];
- const [data,setData]=useState<Records>(emptyRecords),[ready,setReady]=useState(false),[message,setMessage]=useState('Checking admin access…'),[month,setMonth]=useState(today().slice(0,7)),[tab,setTab]=useState('Overview'),[slip,setSlip]=useState<Bill|null>(null),[date,setDate]=useState(today());
- useEffect(()=>{ fetch('/api/auth/session').then(async r=>{if(!r.ok || (await r.json()).role!=='admin') throw Error('Sign in as an administrator to access salary records.');const saved=localStorage.getItem(KEY);if(saved){const parsed=JSON.parse(saved);if(!validRecords(parsed))throw Error("Saved data is invalid. Restore a valid backup before continuing.");setData(parsed);}setReady(true);setMessage('');}).catch(e=>setMessage(e.message));const timer=setInterval(()=>setDate(today()),60000);return ()=>clearInterval(timer);},[]);
- function save(next:Records){try{const latest=localStorage.getItem(KEY);if(latest&&JSON.stringify(JSON.parse(latest))!==JSON.stringify(data)){const updated=JSON.parse(latest);if(!validRecords(updated))throw Error();setData(updated);setMessage('Records changed in another page. Latest records loaded; please submit your change again.');return false;}localStorage.setItem(KEY,JSON.stringify(next));setData(next);setMessage('Saved on this browser.');return true;}catch{setMessage('Could not save. Export a backup and check browser storage.');return false;}}
- function removeRecord(id:string,name:string){
-   const linkedBills=data.bills.filter(b=>b.kind===kind&&b.entity===id);
-   const entries=kind==='Salary'?data.entries.filter(e=>e.employee===id).length:0;
-   if(!confirm(`Delete ${name}? This also permanently deletes ${linkedBills.length} bill(s), ${linkedBills.reduce((n,b)=>n+b.payments.length,0)} payment(s) and ${entries} ledger entry/entries. Export a backup first if you need these records. This cannot be undone.`))return;
-   if(save(deleteStaffRentRecord(data,kind,id))){setEditingId(null);setSlip(null);}
- }
- function form(event:FormEvent<HTMLFormElement>,action:(f:FormData)=>boolean){event.preventDefault();if(action(new FormData(event.currentTarget)))event.currentTarget.reset();}
- const str=(f:FormData,k:string)=>String(f.get(k)||'').trim();const num=(f:FormData,k:string)=>Number(f.get(k)||0);
- const drafts:Bill[]=[...data.employees.filter(e=>e.joined.slice(0,7)<=month).map(e=>salaryBill(data,e,month)),...data.halls.filter(h=>h.start.slice(0,7)<=month).map(h=>({id:`Rent-${h.id}-${month}`,entity:h.id,name:`${h.location} hall rent`,location:h.location,month,kind:'Rent',basic:h.rent,leave:0,recovery:0,debit:0,extra:0,total:h.rent,payments:[]}))].filter(b=>b.kind===kind&&!data.bills.some(x=>x.id===b.id));
- const bills=data.bills.filter(b=>b.kind===kind&&b.month===month);const outstanding=data.bills.filter(b=>b.kind===kind&&balance(b)>0);const monthEnd=new Date(Number(month.slice(0,4)),Number(month.slice(5)),0).getDate();const due= `${month}-${monthEnd}`<=date;
- const pendingMonths = new Set<string>();
- for (const entity of [...data.employees.map(e=>({id:e.id,start:e.joined,kind:'Salary'})),...data.halls.map(h=>({id:h.id,start:h.start,kind:'Rent'}))]) {
-   if(entity.kind!==kind)continue;
-   let cursor=entity.start.slice(0,7);
-   for(let i=0;cursor<date.slice(0,7)&&i<1200;i++) {
-     if(!data.bills.some(b=>b.entity===entity.id&&b.kind===entity.kind&&b.month===cursor)) pendingMonths.add(cursor);
-     const [y,m]=cursor.split('-').map(Number);cursor=m===12?`${y+1}-01`:`${y}-${String(m+1).padStart(2,'0')}`;
-   }
- }
- const renewals=data.halls.filter(h=>h.renewal && Math.ceil((new Date(h.renewal+'T00:00:00').getTime()-new Date(date+'T00:00:00').getTime())/86400000)<=30);
- function exportBackup(){const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`aishwarya-staff-rent-${date}.json`;a.click();URL.revokeObjectURL(url);}
- if(!ready)return <main className="adminPage sr"><h1>{title}</h1><p className="adminMessage" role="status">{message}</p><a href="/admin">Admin sign in</a></main>;
- return <main className="adminPage sr"><div className="sr-screen"><header className="adminHeader"><div><p className="kicker">AISHWARYA PARTY HALL · OFFLINE ADMIN</p><h1>{title}</h1><p>{isSalary?'Employees, leave, advances and salary payments':'Hall agreements, rent payments and renewals'} · Padi &amp; Korattur</p></div><a href="/admin">← Admin Home</a></header><div className="sr-notice">Stored only in this browser on this computer. Export backups regularly. Reminders update while this page is open; sending slips requires internet.</div><nav aria-label={`${title} management`}>{tabs.map(t=><button key={t} aria-current={tab===t?'page':undefined} onClick={()=>setTab(t)}>{t}</button>)}</nav><p className="adminMessage" role="status">{message}</p><div className="sr-toolbar"><label>{isSalary?'Salary month':'Rent month'}<input type="month" value={month} onChange={e=>{if(e.target.value)setMonth(e.target.value);}}/></label><span>{isSalary?'Calendar-day salary basis · salary due at month end':'Monthly hall rent due at month end'}</span></div>
- {tab==='Overview'&&<><section className="sr-cards"><article><span>{isSalary?'Employees':'Hall locations'}</span><strong>{isSalary?data.employees.length:data.halls.length}</strong></article><article><span>Unpaid finalised bills · all months</span><strong>{money(outstanding.reduce((s,b)=>s+balance(b),0))}</strong></article>{isSalary&&<article><span>Advances not assigned to payroll</span><strong>{money(data.employees.reduce((s,e)=>s+advanceBalance(data,e.id),0))}</strong></article>}{!isSalary&&<article><span>Renewals within 30 days / overdue</span><strong>{renewals.length}</strong></article>}</section><section><h2>Monthly calculations</h2>{pendingMonths.size>0&&<div className="sr-notice">Months awaiting review: {[...pendingMonths].sort().map(m=><button key={m} onClick={()=>setMonth(m)}>{m}</button>)}</div>}<p>{due?'Month-end payment reminder: review and finalise the calculations below.':`Preview for this month. Finalise at month end after reviewing ${isSalary?'leave and deductions':'the hall agreement'}.`} {isSalary?'Finalising locks this month’s calculation and reserves its advance recovery once.':'Finalising locks this month’s rent amount.'}</p>{drafts.length===0&&<p>No new calculations. Add {isSalary?'employee':'hall'} details, or view finalised bills in Payments.</p>}{drafts.map(b=><article className="sr-row" key={b.id}><div><b>{b.name}</b><p>{b.location} · {b.kind} · {month}</p>{isSalary?<small>Basic {money(b.basic)} + extras {money(b.extra)} − leave {money(b.leave)} − advance {money(b.recovery)} − debits {money(b.debit)}</small>:<small>Monthly agreement rent {money(b.basic)}</small>}</div><strong>{money(b.total)}</strong><button disabled={!due} onClick={()=>save({...data,bills:[...data.bills,b]})}>Finalise</button></article>)}</section><section><h2>Payment reminders · all months</h2>{outstanding.length===0?<p>No unpaid finalised bills.</p>:outstanding.map(b=><article className="sr-row" key={b.id}><div><b>{b.name}</b><p>{b.month} · {b.location}</p></div><strong>{money(balance(b))} due</strong><button onClick={()=>{setMonth(b.month);setTab('Payments');}}>Record payment</button></article>)}</section>{!isSalary&&<section><h2>Renewal reminders</h2>{renewals.length===0?<p>No upcoming renewals.</p>:renewals.map(h=><p key={h.id}><b>{h.location}</b> · Agreement renewal {h.renewal} · <button onClick={()=>setTab('Hall Details')}>Update renewal date</button></p>)}</section>}</>}
- {tab==='Employees'&&<><section><h2>Add employee</h2><form onSubmit={e=>form(e,f=>save({...data,employees:[...data.employees,{id:uid(),name:str(f,'name'),location:str(f,'location'),phone:str(f,'phone'),role:str(f,'role'),joined:str(f,'joined'),salary:num(f,'salary'),recovery:num(f,'recovery'),paidLeave:num(f,'paidLeave')}]}))}><Field name="name" label="Employee name"/><Location/><Field name="role" label="Job role"/><Field name="phone" label="Phone (country code for WhatsApp)" required={false}/><Field name="joined" label="Joining date" type="date"/><Field name="salary" label="Monthly basic salary ₹" type="number"/><Field name="recovery" label="Monthly advance recovery ₹" type="number" value={0}/><Field name="paidLeave" label="Paid leave allowance / month (days)" type="number" value={0}/><button>Add employee</button></form></section>{data.employees.map(emp=><section key={emp.id}><h2>{emp.name} · {emp.location}</h2><p>{emp.role} · {emp.phone||'No phone'} · Joined {emp.joined} · Unassigned advance {money(advanceBalance(data,emp.id))}</p><div className="sr-actions"><button onClick={()=>setEditingId(emp.id)}>Edit</button><button className="sr-delete" onClick={()=>removeRecord(emp.id,emp.name)}>Delete</button></div>{editingId===emp.id&&<form key={JSON.stringify(emp)} onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);const joined=str(f,'joined');if(data.entries.some(x=>x.employee===emp.id&&x.date<joined)||data.bills.some(b=>b.kind==='Salary'&&b.entity===emp.id&&b.month<joined.slice(0,7))){setMessage('Joining date cannot be after existing ledger entries or salary months.');return;}if(save({...data,employees:data.employees.map(x=>x.id===emp.id?{...x,name:str(f,'name'),location:str(f,'location'),role:str(f,'role'),joined,salary:num(f,'salary'),recovery:num(f,'recovery'),paidLeave:num(f,'paidLeave'),phone:str(f,'phone')}:x)}))setEditingId(null);}}><Field name="name" label="Employee name" value={emp.name}/><Location value={emp.location}/><Field name="role" label="Job role" value={emp.role}/><Field name="joined" label="Joining date" type="date" value={emp.joined}/><Field name="salary" label="Monthly salary ₹ (unfinalised months)" type="number" value={emp.salary}/><Field name="recovery" label="Monthly advance recovery ₹" type="number" value={emp.recovery}/><Field name="paidLeave" label="Paid leave allowance / month (days)" type="number" value={emp.paidLeave}/><Field name="phone" label="Phone" value={emp.phone} required={false}/><p>Changes apply to unfinalised calculations. Existing bills keep their saved details.</p><button>Save changes</button><button type="button" onClick={()=>setEditingId(null)}>Cancel</button></form>}</section>)}</>}
- {tab==='Leave & Ledger'&&<><section><h2>Leave, advances & employee ledger</h2><p>For leave, enter days (0.5 for a half day). For other entries, enter rupees. Debits are salary deductions; reimbursements are money owed to employees.</p><form onSubmit={e=>form(e,f=>{const employee=str(f,'employee'),entryDate=str(f,'date'),kind=str(f,'kind'),amount=num(f,'amount');if(data.bills.some(b=>b.kind==='Salary'&&b.entity===employee&&b.month===entryDate.slice(0,7))){setMessage('This salary month is locked. Choose an unfinalised month.');return false;}if(kind==='Debit'){const employeeData=data.employees.find(x=>x.id===employee);const prior=data.entries.filter(x=>x.employee===employee&&x.kind==='Debit'&&x.date.startsWith(entryDate.slice(0,7))).reduce((s,x)=>s+x.amount,0);if(employeeData&&prior+amount>employeeData.salary){setMessage('Debits exceed monthly salary. Split the deduction across months.');return false;}}if(amount<=0){setMessage('Enter an amount or days greater than zero.');return false;}const selectedEmployee=data.employees.find(x=>x.id===employee);if(selectedEmployee&&entryDate<selectedEmployee.joined){setMessage('Entry date cannot be before joining date.');return false;}if(kind.includes('leave')){const existing=data.entries.filter(x=>x.employee===employee&&x.date===entryDate&&x.kind.includes('leave')).reduce((s,x)=>s+x.amount,0);if(existing+amount>1){setMessage('Total leave cannot exceed one day on a date.');return false;}}return save({...data,entries:[...data.entries,{id:uid(),employee,date:entryDate,kind,amount,note:str(f,'note')}]});})}><label>Employee<select name="employee" required><option value="">Choose employee</option>{data.employees.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label><Field name="date" label="Date" type="date" value={date}/><label>Entry type<select name="kind">{['Advance','Debit','Paid leave','Unpaid leave','Bonus / overtime','Reimbursement'].map(k=><option key={k}>{k}</option>)}</select></label><Field name="amount" label="Amount ₹ / leave days" type="number"/><Field name="note" label="Reason / payment method / reference"/><button>Save entry</button></form></section><section><h2>Ledger · {month}</h2>{data.employees.map(e=><p key={e.id}>{e.name}: Paid leave {data.entries.filter(x=>x.employee===e.id&&x.date.startsWith(month)&&x.kind==='Paid leave').reduce((s,x)=>s+x.amount,0)} / {e.paidLeave} days allowance</p>)}{data.entries.filter(e=>e.date.startsWith(month)).sort((a,b)=>b.date.localeCompare(a.date)).map(e=><article className="sr-row" key={e.id}><div><b>{data.employees.find(x=>x.id===e.employee)?.name} · {e.kind}</b><p>{e.date} · {e.note}</p></div><strong>{e.kind.includes('leave')?`${e.amount} day(s)`:money(e.amount)}</strong></article>)}</section></>}
- {tab==='Hall Details'&&<><section><h2>Add hall agreement</h2><form onSubmit={e=>form(e,f=>{if(data.halls.some(h=>h.location===str(f,'location'))){setMessage('This location already exists. Update its agreement below.');return false;}return save({...data,halls:[...data.halls,{id:uid(),location:str(f,'location'),address:str(f,'address'),owner:str(f,'owner'),phone:str(f,'phone'),rent:num(f,'rent'),deposit:num(f,'deposit'),start:str(f,'start'),renewal:str(f,'renewal')}]});})}><Location/><Field name="address" label="Hall address"/><Field name="owner" label="Owner name"/><Field name="phone" label="Owner phone" required={false}/><Field name="rent" label="Monthly rent ₹" type="number"/><Field name="deposit" label="Deposit ₹" type="number" value={0}/><Field name="start" label="First rent month / agreement start" type="date"/><Field name="renewal" label="Agreement renewal date" type="date"/><button>Add hall</button></form></section>{data.halls.map(h=><section key={h.id}><h2>{h.location}</h2><p>{h.address} · Owner: {h.owner} · {h.phone} · Deposit {money(h.deposit)}</p><div className="sr-actions"><button onClick={()=>setEditingId(h.id)}>Edit</button><button className="sr-delete" onClick={()=>removeRecord(h.id,`${h.location} hall agreement`)}>Delete</button></div>{editingId===h.id&&<form key={JSON.stringify(h)} onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);const location=str(f,'location'),start=str(f,'start'),renewal=str(f,'renewal');if(data.halls.some(x=>x.id!==h.id&&x.location===location)){setMessage('This location already has an agreement.');return;}if(renewal<start){setMessage('Renewal date cannot be before the agreement start.');return;}if(data.bills.some(b=>b.kind==='Rent'&&b.entity===h.id&&b.month<start.slice(0,7))){setMessage('Agreement start cannot be after existing rent months.');return;}if(save({...data,halls:data.halls.map(x=>x.id===h.id?{...x,location,address:str(f,'address'),owner:str(f,'owner'),phone:str(f,'phone'),deposit:num(f,'deposit'),start,rent:num(f,'rent'),renewal}:x)}))setEditingId(null);}}><Location value={h.location}/><Field name="address" label="Hall address" value={h.address}/><Field name="owner" label="Owner name" value={h.owner}/><Field name="phone" label="Owner phone" value={h.phone} required={false}/><Field name="deposit" label="Deposit ₹" type="number" value={h.deposit}/><Field name="start" label="Agreement start" type="date" value={h.start}/><Field name="rent" label="Monthly rent ₹ (unfinalised months)" type="number" value={h.rent}/><Field name="renewal" label="Next renewal date" type="date" value={h.renewal}/><p>Existing rent bills keep their saved details.</p><button>Save changes</button><button type="button" onClick={()=>setEditingId(null)}>Cancel</button></form>}</section>)}</>}
- {tab==='Payments'&&<section><h2>Finalised {isSalary?'salary':'rent'} · {month}</h2><p>Part payments keep reminders open. Full payment closes the reminder automatically.</p>{bills.length===0&&<p>No finalised bills for this month. Review calculations in Overview.</p>}{bills.map(b=><article className="sr-bill" key={b.id}><div className="sr-row"><div><h3>{b.name}</h3><p>{b.location} · {b.month} · {balance(b)===0?'Closed / settled':'Payment due'}</p></div><strong>{money(b.total)} total<br/>{money(balance(b))} due</strong>{b.kind==='Salary'&&<button onClick={()=>setSlip(b)}>Salary slip</button>}</div>{b.payments.map(p=><p key={p.id}>{p.date} · {money(p.amount)} · {p.method} · {p.reference}</p>)}{balance(b)>0&&<form onSubmit={e=>form(e,f=>{const amount=num(f,'amount');if(amount<=0||amount>balance(b)){setMessage('Payment must be positive and no greater than the balance.');return false;}if(str(f,'date')>date){setMessage('Payment date cannot be in the future.');return false;}return save({...data,bills:data.bills.map(x=>x.id===b.id?{...x,payments:[...x.payments,{id:uid(),date:str(f,'date'),amount,method:str(f,'method'),reference:str(f,'reference')}]}:x)});})}><Field name="date" label="Payment date" type="date" value={date}/><Field name="amount" label="Amount paid ₹" type="number"/><label>Method<select name="method"><option>UPI</option><option>Bank transfer</option><option>Cash</option><option>Cheque</option></select></label><Field name="reference" label="Reference / receipt note" required={false}/><button>Record payment</button></form>}</article>)}</section>}
- {tab==='Backup'&&<section><h2>Offline backup</h2><p>This backup includes both Staff Salary and Hall Rent records. It is separate from the main booking database. Export before clearing browser data or moving computers. Backups contain private employee information.</p><button onClick={exportBackup}>Download backup</button><label>Restore staff & rent backup (replaces these records)<input type="file" accept="application/json,.json" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{const parsed=JSON.parse(await file.text());if(!validRecords(parsed))throw Error();if(!confirm('Replace all staff and rent records with this backup? Download your current backup first.'))return;save(parsed);}catch{setMessage('Invalid backup file. No records changed.');}e.target.value='';}}/></label></section>}
- </div>{slip&&<div className="sr-slip"><div className="sr-screen sr-toolbar"><button onClick={()=>window.print()}>Print / Save PDF</button><button onClick={()=>{const phone=data.employees.find(e=>e.id===slip.entity)?.phone.replace(/\D/g,'')||'';window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Aishwarya Party Hall — Salary slip\n${slip.name} | ${slip.location} | ${slip.month}\nBasic: ${money(slip.basic)}\nExtras: ${money(slip.extra)}\nLeave: ${money(slip.leave)}\nAdvance recovery: ${money(slip.recovery)}\nOther deductions: ${money(slip.debit)}\nNet salary: ${money(slip.total)}\nPaid: ${money(paid(slip))}\nBalance due: ${money(balance(slip))}`)}`,'_blank','noopener,noreferrer');}}>Share via WhatsApp</button><button onClick={()=>setSlip(null)}>Close slip</button></div><p>AISHWARYA PARTY HALL</p><h1>Salary slip</h1><h2>{slip.name}</h2><p>{slip.location} · {slip.month}</p><dl>{[['Basic salary',slip.basic],['Bonus / overtime / reimbursement',slip.extra],['Unpaid leave deduction',slip.leave],['Advance recovery',slip.recovery],['Other deductions',slip.debit],['Net salary',slip.total],['Amount paid',paid(slip)],['Balance payable',balance(slip)]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{money(Number(v))}</dd></div>)}</dl><p>{balance(slip)===0?'Settled':'Payment pending'} · Generated {date}</p></div>}</main>;
+const money = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Math.round(amount));
+const displayDate = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  return `${day}-${new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(new Date(Number(year), Number(month) - 1, 1))}-${year}`;
+};
+
+function Input({ name, label, type = 'text', value, required = true }: { name: string; label: string; type?: string; value?: string | number; required?: boolean }) {
+  return <label>{label}<input name={name} type={type} defaultValue={value} required={required} min={type === 'number' ? 0 : undefined} step={type === 'number' ? '0.5' : undefined} /></label>;
+}
+
+export function StaffRentWorkspace({ kind }: { kind: 'Salary' | 'Rent' }) {
+  return kind === 'Salary' ? <StaffSalaryWorkspace /> : <HallRentWorkspace />;
+}
+
+function StaffSalaryWorkspace() {
+  const isSalary = true;
+  const [data, setData] = useState<Records>(emptyRecords);
+  const [ready, setReady] = useState(false);
+  const [message, setMessage] = useState('Checking admin access…');
+  const [month, setMonth] = useState(today().slice(0, 7));
+  const [tab, setTab] = useState('Salary');
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
+  const [slip, setSlip] = useState<Bill | null>(null);
+  const [date, setDate] = useState(today());
+  const [leaveEditor, setLeaveEditor] = useState<{ ids: string[]; employee: string; from: string; to: string; kind: string; amount: number; note: string } | null>(null);
+  const [advanceEmployee, setAdvanceEmployee] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState(0);
+  const [leaveCalendarEmployee, setLeaveCalendarEmployee] = useState('');
+  const [reportEmployee, setReportEmployee] = useState('');
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/session').then(async response => {
+      if (!response.ok || (await response.json()).role !== 'admin') throw Error('Sign in as an administrator to access salary records.');
+      const saved = localStorage.getItem(KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!validRecords(parsed)) throw Error('Saved salary records are invalid. Restore a backup before continuing.');
+        const cleaned = {
+          ...parsed,
+          employees: parsed.employees.map(employee => ({ ...employee, description: employee.description ?? '', closing: employee.closing ?? '' })),
+          entries: parsed.entries.filter((entry: Entry) => entry.kind !== 'Debit'),
+          bills: parsed.bills.map((bill: Bill) => bill.kind === 'Salary' ? { ...bill, debit: 0 } : bill),
+        };
+        localStorage.setItem(KEY, JSON.stringify(cleaned));
+        setData(cleaned);
+      }
+      setReady(true);
+      setMessage('');
+    }).catch(error => setMessage(error.message));
+    const timer = setInterval(() => setDate(today()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (leaveEditor) document.getElementById('leave-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [leaveEditor]);
+
+  function save(next: Records, confirmation = 'Saved offline on this computer.') {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(next));
+      setData(next);
+      setMessage(confirmation);
+      return true;
+    } catch {
+      setMessage('Could not save. Download a backup and check browser storage.');
+      return false;
+    }
+  }
+
+  function recalculateFinalisedSalaries() {
+    const revisedBills = data.bills.map(bill => {
+      if (bill.kind !== 'Salary') return bill;
+      const employee = data.employees.find(item => item.id === bill.entity);
+      if (!employee) return bill;
+      const revised = { ...salaryBill(data, employee, bill.month), payments: bill.payments };
+      return paid(revised) <= revised.total ? revised : bill;
+    });
+    const changed = revisedBills.some((bill, index) => {
+      const original = data.bills[index];
+      return bill.leave !== original.leave || bill.recovery !== original.recovery || bill.debit !== original.debit || bill.extra !== original.extra || bill.total !== original.total;
+    });
+    return changed ? save({ ...data, bills: revisedBills }, 'Finalised salaries recalculated from saved leave and advances.') : save(data, 'All finalised salaries are already up to date.');
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>, action: (form: FormData) => boolean) {
+    event.preventDefault();
+    if (action(new FormData(event.currentTarget))) event.currentTarget.reset();
+  }
+
+  const value = (form: FormData, name: string) => String(form.get(name) || '').trim();
+  const number = (form: FormData, name: string) => Number(form.get(name) || 0);
+  const employees = data.employees;
+  const draft = (employee: Employee) => salaryBill(data, employee, month);
+  const selected = employees.find(employee => employee.id === selectedEmployee) ?? null;
+  const selectedBill = selected ? draft(selected) : null;
+  const finalisedSelectedBill = selectedBill ? data.bills.find(bill => bill.id === selectedBill.id) : null;
+  const previousAdvance = selected ? data.entries.filter(entry => entry.employee === selected.id && entry.kind === 'Advance' && entry.date < `${month}-01`).reduce((sum, entry) => sum + entry.amount, 0) - data.bills.filter(bill => bill.entity === selected.id && bill.kind === 'Salary' && bill.month < month).reduce((sum, bill) => sum + bill.recovery, 0) : 0;
+  const currentAdvance = selected ? data.entries.filter(entry => entry.employee === selected.id && entry.kind === 'Advance' && entry.date.startsWith(month)).reduce((sum, entry) => sum + entry.amount, 0) : 0;
+  const oldAdvanceBalance = advanceEmployee ? advanceBalance(data, advanceEmployee) : 0;
+  const finalised = data.bills.filter(bill => bill.kind === 'Salary' && bill.month === month);
+  const monthEnd = new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate();
+  const leavePeriods = (() => {
+    const periods: { ids: string[]; employee: string; kind: string; amount: number; note: string; from: string; to: string; days: number }[] = [];
+    for (const entry of [...data.entries.filter(item => item.kind.includes('leave'))].sort((a, b) => `${a.employee}|${a.kind}|${a.amount}|${a.note}|${a.date}`.localeCompare(`${b.employee}|${b.kind}|${b.amount}|${b.note}|${b.date}`))) {
+      const last = periods.at(-1);
+      const lastDate = last ? new Date(`${last.to}T00:00:00`) : null;
+      if (lastDate) lastDate.setDate(lastDate.getDate() + 1);
+      const isNextDay = lastDate ? `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}` === entry.date : false;
+      if (last && last.employee === entry.employee && last.kind === entry.kind && last.amount === entry.amount && last.note === entry.note && isNextDay) {
+        last.to = entry.date;
+        last.days += entry.amount;
+        last.ids.push(entry.id);
+      } else periods.push({ ids: [entry.id], employee: entry.employee, kind: entry.kind, amount: entry.amount, note: entry.note, from: entry.date, to: entry.date, days: entry.amount });
+    }
+    return periods.sort((a, b) => b.to.localeCompare(a.to));
+  })();
+  const leaveDaysInMonth = new Set(data.entries.filter(entry => entry.kind.includes('leave') && entry.date.startsWith(month) && (!leaveCalendarEmployee || entry.employee === leaveCalendarEmployee)).map(entry => entry.date));
+  const leavePeriodsForMonth = leavePeriods.filter(period => period.from <= `${month}-${monthEnd}` && period.to >= `${month}-01`);
+  const leaveDaysForPeriodMonth = (period: typeof leavePeriods[number]) => data.entries.filter(entry => period.ids.includes(entry.id) && entry.date.startsWith(month)).reduce((total, entry) => total + entry.amount, 0);
+  const calendarDays = (() => {
+    const year = Number(month.slice(0, 4)); const monthNumber = Number(month.slice(5));
+    const offset = new Date(year, monthNumber - 1, 1).getDay();
+    const days = new Date(year, monthNumber, 0).getDate();
+    return Array.from({ length: offset + days }, (_, index) => index < offset ? null : `${month}-${String(index - offset + 1).padStart(2, '0')}`);
+  })();
+  // A slip can be prepared at any point in the selected month. Payment is
+  // recorded separately, so this action never marks a salary as paid.
+  const canFinalise = true;
+  const currentAdvanceForBill = (bill: Bill) => data.entries
+    .filter(entry => entry.employee === bill.entity && entry.kind === 'Advance' && entry.date.startsWith(bill.month))
+    .reduce((sum, entry) => sum + entry.amount, 0);
+  const additionDetail = (bill: Bill) => data.entries
+    .filter(entry => entry.employee === bill.entity && entry.date.startsWith(bill.month) && ['Bonus / overtime', 'Reimbursement'].includes(entry.kind) && entry.note)
+    .map(entry => entry.note)
+    .filter((note, index, notes) => notes.indexOf(note) === index)
+    .join(', ');
+  const slipPreviousAdvance = slip ? Math.max(0,
+    data.entries.filter(entry => entry.employee === slip.entity && entry.kind === 'Advance' && entry.date < `${slip.month}-01`).reduce((sum, entry) => sum + entry.amount, 0)
+    - data.bills.filter(bill => bill.entity === slip.entity && bill.kind === 'Salary' && bill.month < slip.month).reduce((sum, bill) => sum + bill.recovery, 0)
+  ) : 0;
+
+  function saveLeave(form: FormData) {
+    const employee = value(form, 'employee');
+    const from = value(form, 'from');
+    const to = value(form, 'to');
+    const leaveType = value(form, 'leaveType');
+    const perDay = number(form, 'perDay');
+    const note = value(form, 'note');
+    if (!employee || !from || !to || !leaveType || perDay <= 0 || perDay > 1) { setMessage('Choose staff, leave dates and 1 day or 0.5 day.'); return false; }
+    if (to < from) { setMessage('Leave end date cannot be before leave start date.'); return false; }
+    const dates: string[] = [];
+    for (let cursor = from; cursor <= to;) {
+      dates.push(cursor);
+      const next = new Date(`${cursor}T00:00:00`);
+      next.setDate(next.getDate() + 1);
+      cursor = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+    }
+    const replacedEntries = leaveEditor ? data.entries.filter(entry => !leaveEditor.ids.includes(entry.id)) : data.entries;
+    const affectedMonths = new Set([...dates, ...(leaveEditor ? data.entries.filter(entry => leaveEditor.ids.includes(entry.id)).map(entry => entry.date) : [])].map(day => day.slice(0, 7)));
+    const affectedBills = data.bills.filter(bill => bill.kind === 'Salary' && bill.entity === employee && affectedMonths.has(bill.month));
+    if (affectedBills.length && !leaveEditor) { setMessage('This leave period includes a finalised salary month. Edit the existing leave period instead.'); return false; }
+    for (const day of dates) {
+      const existing = replacedEntries.filter(entry => entry.employee === employee && entry.date === day && entry.kind.includes('leave')).reduce((total, entry) => total + entry.amount, 0);
+      if (existing > 0) { setMessage(`Leave is already recorded for ${day}. Choose dates without marked leave.`); return false; }
+    }
+    const period = `${from} to ${to}`;
+    const nextEntries = [...replacedEntries, ...dates.map(day => ({ id: uid(), employee, date: day, kind: leaveType, amount: perDay, note: `${note}${note ? ' · ' : ''}Leave period ${period}` }))];
+    const nextData = { ...data, entries: nextEntries };
+    const updatedBills = data.bills.map(bill => {
+      if (!affectedBills.some(affected => affected.id === bill.id)) return bill;
+      const employeeData = data.employees.find(item => item.id === bill.entity);
+      if (!employeeData) return bill;
+      const recalculated = salaryBill(nextData, employeeData, bill.month);
+      return { ...recalculated, payments: bill.payments };
+    });
+    if (updatedBills.some(bill => affectedBills.some(affected => affected.id === bill.id) && paid(bill) > bill.total)) { setMessage('This correction would make the recorded payment higher than the corrected salary. Update payment first.'); return false; }
+    const saved = save({ ...nextData, bills: updatedBills }, `${dates.length * perDay} leave day(s) saved for ${period}. Salary calculation updated.`);
+    if (saved) setLeaveEditor(null);
+    return saved;
+  }
+
+  function deleteLeavePeriod(ids: string[]) {
+    if (!confirm('Delete this saved leave period? The salary calculation will update immediately.')) return;
+    save({ ...data, entries: data.entries.filter(entry => !ids.includes(entry.id)) }, 'Leave period deleted.');
+  }
+
+  function addStaff(form: FormData) {
+    const employee: Employee = { id: uid(), name: value(form, 'name'), location: value(form, 'location'), phone: value(form, 'phone'), role: value(form, 'role'), joined: value(form, 'joined'), salary: number(form, 'salary'), recovery: 0, paidLeave: 0, description: value(form, 'description'), closing: value(form, 'closing') };
+    if (!employee.name || !employee.role || !employee.joined || employee.salary <= 0) { setMessage('Enter staff name, role, joining date and monthly salary.'); return false; }
+    return save({ ...data, employees: [...data.employees, employee] }, `${employee.name} was added.`);
+  }
+
+  function recordPayment(form: FormData, bill: Bill) {
+    const amount = number(form, 'amount');
+    const paymentDate = value(form, 'date');
+    if (amount <= 0 || amount > balance(bill)) { setMessage('Payment must be more than zero and not above the balance.'); return false; }
+    if (paymentDate > date) { setMessage('Payment date cannot be in the future.'); return false; }
+    return save({ ...data, bills: data.bills.map(item => item.id === bill.id ? { ...item, payments: [...item.payments, { id: uid(), date: paymentDate, amount, method: value(form, 'method'), reference: value(form, 'reference') }] } : item) }, 'Payment recorded.');
+  }
+
+  function saveFinancialEntry(form: FormData) {
+    const employee = value(form, 'employee');
+    const amount = number(form, 'amount');
+    const entryDate = value(form, 'date');
+    if (!employee || amount <= 0 || !entryDate) { setMessage('Choose staff, date and an amount.'); return false; }
+    const entry = { id: editingEntry?.id ?? uid(), employee, date: entryDate, kind: value(form, 'kind'), amount, note: value(form, 'note') };
+    const nextData = { ...data, entries: [...data.entries.filter(item => item.id !== editingEntry?.id), entry] };
+    const affectedMonths = new Set([entryDate, editingEntry?.date].filter(Boolean).map(item => item!.slice(0, 7)));
+    const revisedBills = data.bills.map(bill => {
+      if (bill.kind !== 'Salary' || !affectedMonths.has(bill.month) || (bill.entity !== employee && bill.entity !== editingEntry?.employee)) return bill;
+      const staff = nextData.employees.find(item => item.id === bill.entity);
+      return staff ? { ...salaryBill(nextData, staff, bill.month), payments: bill.payments } : bill;
+    });
+    if (revisedBills.some((bill, index) => paid(bill) > bill.total && bill.id === data.bills[index].id)) { setMessage('This change would make a recorded payment higher than the revised salary. Update payment first.'); return false; }
+    const saved = save({ ...nextData, bills: revisedBills }, `${entry.kind} ${editingEntry ? 'updated' : 'saved'}.`);
+    if (saved) setEditingEntry(null);
+    return saved;
+  }
+
+  function saveSalaryAdjustments(form: FormData, employee: Employee) {
+    const recovery = number(form, 'recovery');
+    const addition = number(form, 'addition');
+    const additionReason = value(form, 'additionReason');
+    if (recovery < 0 || addition < 0) { setMessage('Amounts cannot be negative.'); return false; }
+    const monthDate = `${month}-${monthEnd}`;
+    const retainedEntries = data.entries.filter(entry => !(entry.employee === employee.id && entry.date.startsWith(month) && ['Advance recovery', 'Bonus / overtime', 'Reimbursement'].includes(entry.kind)));
+    const entries = [
+      ...retainedEntries,
+      ...(recovery > 0 ? [{ id: uid(), employee: employee.id, date: monthDate, kind: 'Advance recovery', amount: recovery, note: 'Salary slip recovery' }] : []),
+      ...(addition > 0 ? [{ id: uid(), employee: employee.id, date: monthDate, kind: 'Bonus / overtime', amount: addition, note: additionReason || 'Salary addition' }] : []),
+    ];
+    const nextData = { ...data, entries };
+    const bills = data.bills.map(bill => bill.kind === 'Salary' && bill.entity === employee.id && bill.month === month ? { ...salaryBill(nextData, employee, month), payments: bill.payments } : bill);
+    const bill = bills.find(item => item.kind === 'Salary' && item.entity === employee.id && item.month === month);
+    if (bill && paid(bill) > bill.total) { setMessage('This change would make a recorded payment higher than the salary. Update the payment first.'); return false; }
+    return save({ ...nextData, bills }, 'Advance recovery and salary addition saved.');
+  }
+
+  function deleteFinancialEntry(entry: Entry) {
+    if (!confirm(`Delete this ${entry.kind.toLowerCase()} entry?`)) return;
+    const nextData = { ...data, entries: data.entries.filter(item => item.id !== entry.id) };
+    const revisedBills = data.bills.map(bill => {
+      if (bill.kind !== 'Salary' || bill.entity !== entry.employee || bill.month !== entry.date.slice(0, 7)) return bill;
+      const staff = nextData.employees.find(item => item.id === bill.entity);
+      return staff ? { ...salaryBill(nextData, staff, bill.month), payments: bill.payments } : bill;
+    });
+    if (revisedBills.some((bill, index) => paid(bill) > bill.total && bill.id === data.bills[index].id)) { setMessage('Cannot delete this entry because it would make a recorded payment higher than the revised salary.'); return; }
+    save({ ...nextData, bills: revisedBills }, `${entry.kind} entry deleted.`);
+  }
+
+  function exportBackup() {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `aishwarya-staff-salary-${date}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  async function downloadSalarySlipImage(bill: Bill, openWhatsApp = false) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200; canvas.height = 1980;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const previousAdvance = Math.max(0, data.entries.filter(entry => entry.employee === bill.entity && entry.kind === 'Advance' && entry.date < `${bill.month}-01`).reduce((sum, entry) => sum + entry.amount, 0) - data.bills.filter(item => item.entity === bill.entity && item.kind === 'Salary' && item.month < bill.month).reduce((sum, item) => sum + item.recovery, 0));
+    ctx.fillStyle = '#fffaf1'; ctx.fillRect(0, 0, 1200, 1980);
+    ctx.fillStyle = '#830b12'; ctx.fillRect(0, 0, 1200, 245);
+    ctx.fillStyle = '#d89b28'; ctx.fillRect(0, 235, 1200, 10);
+    const logo = new Image();
+    await new Promise<void>(resolve => { logo.onload = () => resolve(); logo.onerror = () => resolve(); logo.src = '/images/brand/aishwarya-party-hall-logo.jpg'; });
+    if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 70, 48, 125, 125);
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 28px Arial'; ctx.fillText('AISHWARYA PARTY HALL', 225, 86);
+    ctx.font = '700 52px Georgia'; ctx.fillText('Salary Slip · சம்பள சீட்டு', 225, 150);
+    ctx.font = '400 24px Arial'; ctx.fillText(`${bill.location} · Chennai`, 225, 204);
+    ctx.fillStyle = '#fff7dc'; ctx.fillRect(875, 71, 245, 92);
+    ctx.fillStyle = '#830b12'; ctx.font = '700 29px Arial'; ctx.textAlign = 'center'; ctx.fillText(bill.month, 997, 128); ctx.textAlign = 'left';
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(60, 295, 1080, 165); ctx.strokeStyle = '#e2c78d'; ctx.lineWidth = 2; ctx.strokeRect(60, 295, 1080, 165);
+    ctx.fillStyle = '#806f68'; ctx.font = '700 19px Arial'; ctx.fillText('STAFF MEMBER', 98, 350); ctx.fillText('PAY PERIOD', 760, 350);
+    ctx.fillStyle = '#830b12'; ctx.font = '700 43px Georgia'; ctx.fillText(bill.name, 98, 415); ctx.font = '700 31px Arial'; ctx.fillText(bill.month, 760, 410);
+    const currentAdvanceForSlip = currentAdvanceForBill(bill);
+    const additionNote = additionDetail(bill);
+    const rows = [['# Salary · சம்பளம்', ''], ['Monthly salary · மாத சம்பளம்', money(bill.basic)], ['Unpaid leave · ஊதியமில்லா விடுப்பு', `${unpaidLeaveDays(data, bill.entity, bill.month)} day(s) · −${money(bill.leave)}`], ['Salary after leave · விடுப்புக்குப் பின் சம்பளம்', money(bill.basic - bill.leave)], ['# Advance · முன்பணம்', ''], ['Previous advance balance · முன் முன்பணம்', money(previousAdvance)], ['Current month advance · இந்த மாத முன்பணம்', money(currentAdvanceForSlip)], ['Total advance · மொத்த முன்பணம்', money(previousAdvance + currentAdvanceForSlip)], ['Advance recovery · முன்பணம் பிடித்தம்', `−${money(bill.recovery)}`], ['Next month advance balance · அடுத்த மாத முன்பணம்', money(Math.max(0, previousAdvance + currentAdvanceForSlip - bill.recovery))], ['# Other additions · கூடுதல் தொகை', ''], [additionNote ? `Other additions · கூடுதல் தொகை (${additionNote})` : 'Other additions · கூடுதல் தொகை', `+${money(bill.extra)}`], ['Paid · செலுத்தியது', money(paid(bill))], ['Balance amount · மீதம்', money(balance(bill))]];
+    let y = 535;
+    for (const [label, amount] of rows) {
+      if (label.startsWith('#')) {
+        ctx.fillStyle = '#830b12'; ctx.font = '700 21px Arial'; ctx.fillText(label.slice(2), 90, y);
+        ctx.strokeStyle = '#d89b28'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(90, y + 16); ctx.lineTo(1110, y + 16); ctx.stroke(); y += 58;
+        continue;
+      }
+      const isTotal = label.startsWith('Balance amount');
+      if (isTotal) { ctx.fillStyle = '#fff2d7'; ctx.fillRect(60, y - 43, 1080, 76); }
+      ctx.fillStyle = isTotal ? '#830b12' : '#3f322d'; ctx.font = `${isTotal ? '700' : '600'} ${label.startsWith('Other additions') && additionNote ? '20' : '26'}px Arial`; ctx.fillText(label, 90, y);
+      ctx.font = `${isTotal ? '700' : '600'} 30px Arial`; ctx.textAlign = 'right'; ctx.fillText(amount, 1110, y); ctx.textAlign = 'left';
+      ctx.strokeStyle = '#e9ded4'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(90, y + 28); ctx.lineTo(1110, y + 28); ctx.stroke(); y += 100;
+    }
+    ctx.fillStyle = '#830b12'; ctx.fillRect(60, 1825, 1080, 88); ctx.fillStyle = '#ffffff'; ctx.font = '700 24px Arial'; ctx.textAlign = 'center'; ctx.fillText(balance(bill) === 0 ? 'PAYMENT SETTLED · பணம் செலுத்தப்பட்டது' : 'PAYMENT PENDING · பணம் நிலுவையில் உள்ளது', 600, 1879); ctx.textAlign = 'left';
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) return;
+    const fileName = `Aishwarya-Party-Hall-Salary-Slip-${bill.name.replace(/\s+/g, '-')}-${bill.month}.png`;
+    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = fileName; link.click(); URL.revokeObjectURL(link.href);
+    if (openWhatsApp) {
+      const employee = employees.find(item => item.id === bill.entity);
+      const phone = (employee?.phone || '').replace(/\D/g, '');
+      if (!phone) { setMessage('Salary slip image downloaded. Add this staff member’s mobile number in Add Staff to open their WhatsApp chat.'); return; }
+      const whatsappPhone = phone.length === 10 ? `91${phone}` : phone;
+      window.open(`https://web.whatsapp.com/send?phone=${whatsappPhone}`, '_blank', 'noopener,noreferrer');
+    }
+    setMessage(openWhatsApp ? 'Salary slip image downloaded and the staff WhatsApp chat opened. Attach the downloaded image and send it.' : 'Salary slip image downloaded.');
+  }
+
+  if (!ready) return <main className="adminPage sr"><h1>Staff Salary</h1><p className="adminMessage">{message}</p></main>;
+
+  return <main className="adminPage sr"><div className="sr-screen">
+    <header className="adminHeader"><div><p className="kicker">AISHWARYA PARTY HALL · OFFLINE ADMIN</p><h1>{isSalary ? 'Staff Salary' : 'Hall Rent'}</h1><p>Simple monthly salary, leave and payment records.</p></div><a href="/admin">← Admin Home</a></header>
+    {!isSalary ? <p className="sr-notice">Hall Rent is available in the existing records. This simplified workspace is designed for Staff Salary.</p> : <>
+      <div className="sr-toolbar"><label>Salary month<input type="month" value={month} onChange={event => setMonth(event.target.value)} /></label><span>Enter an Advance recovery entry only for the month you want to deduct it.</span></div>
+      <nav aria-label="Staff salary sections">{[{ id: 'Salary', label: 'Staff Salary / Pay Slip' }, { id: 'Staff', label: 'Add Staff' }, { id: 'Leave', label: 'Staff Leave' }, { id: 'Advance', label: 'Staff Advance' }, { id: 'Report', label: 'Staff Salary Report' }, { id: 'Payments', label: 'Finalised Salary & Payments' }, { id: 'Backup', label: 'Backup' }].map(item => <button key={item.id} aria-current={tab === item.id ? 'page' : undefined} onClick={() => { setTab(item.id); setSelectedEmployee(null); }}>{item.label}</button>)}</nav>
+      {message && <p className="adminMessage" role="status">{message}</p>}
+
+      {tab === 'Salary' && <section><div className="salary-head"><div><h2>Salary for {month}</h2><p>Choose a staff member to review the full calculation before finalising.</p></div><div className="sr-actions"><button onClick={recalculateFinalisedSalaries}>Recalculate saved salaries</button><button onClick={() => setTab('Staff')}>+ Add Staff</button></div></div>
+        <div className="salary-table"><div className="salary-table-header"><span>Staff</span><span>Monthly salary</span><span>Unpaid leave</span><span>Advance</span><span>Net salary</span><span></span></div>
+          {employees.length === 0 ? <p className="empty-state">No staff added yet. Use Add Staff to begin.</p> : employees.filter(employee => employee.joined.slice(0, 7) <= month && (!employee.closing || employee.closing.slice(0, 7) >= month)).map(employee => { const bill = draft(employee); const advanceBalanceForMonth = advanceBalance(data, employee.id, `${month}-${monthEnd}`); return <div className="salary-table-row" key={employee.id}><span><b>{employee.name}</b><small>{employee.role} · {employee.location}</small></span><span>{money(bill.basic)}</span><span>{unpaidLeaveDays(data, employee.id, month)} day(s)<small>{money(bill.leave)} deduction</small></span><span>{money(bill.recovery)}<small>{advanceBalanceForMonth > bill.recovery ? `${money(advanceBalanceForMonth - bill.recovery)} remaining` : 'settled'}</small></span><strong>{money(bill.total)}</strong><button onClick={() => { setSelectedEmployee(employee.id); setTab('Salary'); }}>View</button></div>; })}
+        </div>
+      </section>}
+
+      {tab === 'Staff' && <><section><h2>Add Staff</h2><form onSubmit={event => submit(event, addStaff)}><Input name="name" label="Staff name"/><label>Location<select name="location"><option>Padi</option><option>Korattur</option></select></label><Input name="role" label="Role"/><Input name="joined" label="Joining date" type="date"/><Input name="salary" label="Monthly salary ₹" type="number"/><Input name="phone" label="Mobile no." required={false}/><Input name="description" label="Description" required={false}/><Input name="closing" label="Closing date" type="date" required={false}/><button>Add Staff</button></form></section>
+        {employees.map(employee => <article className="staff-card" key={employee.id}><div className="staff-card-info"><div className="staff-avatar">{employee.name.slice(0, 1).toUpperCase()}</div><div><h3>{employee.name}</h3><div className="staff-meta"><span>{employee.role}</span><span>{employee.location}</span>{employee.closing && <span>Closed {employee.closing}</span>}</div>{employee.description && <p>{employee.description}</p>}</div></div><div className="staff-salary-value"><small>Monthly salary</small><b>{money(employee.salary)}</b></div><div className="sr-actions"><button onClick={() => { setSelectedEmployee(employee.id); }}>Salary details</button><button onClick={() => setEditingEmployee(employee.id)}>Edit</button><button className="sr-delete" onClick={() => { if (confirm(`Delete ${employee.name} and all their salary records?`)) save(deleteStaffRentRecord(data, 'Salary', employee.id), `${employee.name} was deleted.`); }}>Delete</button></div>
+          {editingEmployee === employee.id && <form onSubmit={event => submit(event, form => { const updated = { ...employee, name: value(form, 'name'), location: value(form, 'location'), role: value(form, 'role'), phone: value(form, 'phone'), joined: value(form, 'joined'), salary: number(form, 'salary'), description: value(form, 'description'), closing: value(form, 'closing') }; setEditingEmployee(null); return save({ ...data, employees: data.employees.map(item => item.id === employee.id ? updated : item) }, `${updated.name} was updated.`); })}><Input name="name" label="Staff name" value={employee.name}/><label>Location<select name="location" defaultValue={employee.location}><option>Padi</option><option>Korattur</option></select></label><Input name="role" label="Role" value={employee.role}/><Input name="phone" label="Phone" value={employee.phone} required={false}/><Input name="joined" label="Joining date" type="date" value={employee.joined}/><Input name="salary" label="Monthly salary ₹" type="number" value={employee.salary}/><Input name="description" label="Description" value={employee.description} required={false}/><Input name="closing" label="Closing date" type="date" value={employee.closing} required={false}/><button>Save changes</button><button type="button" onClick={() => setEditingEmployee(null)}>Cancel</button></form>}</article>)}
+      </>}
+
+      {selected && selectedBill && <section className="salary-detail"><div className="salary-head"><div><p className="kicker">STAFF SALARY / PAY SLIP</p><h2>{selected.name} — {month}</h2><p>{selected.role} · {selected.location}</p></div><button onClick={() => setSelectedEmployee(null)}>Close</button></div><dl><div><dt>Leave</dt><dd>{unpaidLeaveDays(data, selected.id, month)} day(s) · −{money(selectedBill.leave)}</dd></div><div><dt>Staff salary for current month</dt><dd>{money(selectedBill.basic)}</dd></div><div><dt>Balance advance from previous month</dt><dd>{money(Math.max(0, previousAdvance))}</dd></div><div><dt>Current month advance</dt><dd>{money(currentAdvance)}</dd></div><div><dt>Total advance</dt><dd>{money(Math.max(0, previousAdvance + currentAdvance))}</dd></div><div><dt>Advance recovery</dt><dd>−{money(selectedBill.recovery)}</dd></div><div><dt>Next month advance balance</dt><dd>{money(Math.max(0, previousAdvance + currentAdvance - selectedBill.recovery))}</dd></div><div className="net"><dt>Balance amount</dt><dd>{money(finalisedSelectedBill ? balance(finalisedSelectedBill) : selectedBill.total)}</dd></div></dl>{!finalisedSelectedBill && <form onSubmit={event => submit(event, form => saveSalaryAdjustments(form, selected))}><Input name="recovery" label="Advance recovery ₹" type="number" value={selectedBill.recovery} required={false}/><Input name="addition" label="Other additions ₹" type="number" value={selectedBill.extra} required={false}/><Input name="additionReason" label="Addition reason" required={false}/><button>Save salary changes</button></form>}<div className="sr-actions"><button disabled={!canFinalise} onClick={() => { if (!finalisedSelectedBill) save({ ...data, bills: [...data.bills, selectedBill] }, 'Salary finalised and sent to payments.'); setSlip(finalisedSelectedBill ?? selectedBill); }}>Generate pay slip & send to payment</button>{finalisedSelectedBill && finalisedSelectedBill.payments.length === 0 && <button className="sr-delete" onClick={() => { if (confirm('Delete this finalised pay slip?')) save({ ...data, bills: data.bills.filter(bill => bill.id !== finalisedSelectedBill.id) }, 'Finalised pay slip deleted.'); }}>Delete pay slip</button>}</div></section>}
+
+      {tab === 'Leave' && <><section id="leave-editor" className={leaveEditor ? 'leave-editor-active' : ''}><h2>{leaveEditor ? 'Edit leave period' : 'Leave period'}</h2>{leaveEditor && <p className="edit-banner">Editing saved leave: {displayDate(leaveEditor.from)} to {displayDate(leaveEditor.to)}. Change the dates, then click Save changes.</p>}<p>Dates marked red in the calendar already have leave recorded and cannot be used again. Edit an existing period to change those dates.</p><form key={leaveEditor ? leaveEditor.ids.join('-') : 'new-leave'} onSubmit={event => submit(event, saveLeave)}><label>Staff name<select name="employee" required defaultValue={leaveEditor?.employee ?? leaveCalendarEmployee} onChange={event => setLeaveCalendarEmployee(event.target.value)}><option value="">Choose staff</option>{employees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></label><Input name="from" label="Leave from" type="date" value={leaveEditor?.from ?? date}/><Input name="to" label="Leave to" type="date" value={leaveEditor?.to ?? date}/><label>Leave type<select name="leaveType" defaultValue={leaveEditor?.kind ?? 'Unpaid leave'}><option>Unpaid leave</option><option>Paid leave</option></select></label><Input name="perDay" label="Leave per day" type="number" value={leaveEditor?.amount ?? 1}/><Input name="note" label="Reason" value={leaveEditor?.note.replace(/ · Leave period .*$/, '') ?? ''} required={false}/><button>{leaveEditor ? 'Save changes' : 'Save Leave'}</button>{leaveEditor && <button type="button" onClick={() => setLeaveEditor(null)}>Cancel edit</button>}</form></section><section className="leave-calendar-section"><div className="salary-head"><div><h2>Leave calendar · {month}</h2><p><span className="calendar-key calendar-leave"></span> Red dates show leave for the staff name selected in Leave Period.</p></div></div>{leaveCalendarEmployee ? <div className="leave-calendar" aria-label={`Saved leave calendar for ${month}`}><div className="calendar-weekdays">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => <span key={day}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button type="button" disabled={leaveDaysInMonth.has(day)} className={leaveDaysInMonth.has(day) ? 'calendar-day unavailable' : 'calendar-day'} key={day} title={leaveDaysInMonth.has(day) ? 'Leave already recorded' : 'Available date'}>{Number(day.slice(8))}</button> : <span className="calendar-blank" key={`blank-${index}`}/>)}</div></div> : <p className="empty-state">Choose a staff name in Leave Period to view their leave dates in the calendar.</p>}</section><section><h2>Already saved leave periods · {month}</h2>{leavePeriodsForMonth.length === 0 ? <p className="empty-state">No saved leave periods for {month}.</p> : <div className="leave-table"><div className="leave-table-header"><span>Staff</span><span>From</span><span>To</span><span>Type</span><span>Total leave</span><span></span></div>{leavePeriodsForMonth.map(period => <div className="leave-table-row" key={period.ids.join('-')}><span><b>{employees.find(employee => employee.id === period.employee)?.name ?? 'Unknown staff'}</b><small>{period.note.replace(/ · Leave period .*$/, '') || '—'}</small></span><span>{displayDate(period.from)}</span><span>{displayDate(period.to)}</span><span>{period.kind}</span><strong>{leaveDaysForPeriodMonth(period)} day(s)</strong><span className="leave-actions"><button onClick={() => { setLeaveCalendarEmployee(period.employee); setLeaveEditor({ ids: period.ids, employee: period.employee, from: period.from, to: period.to, kind: period.kind, amount: period.amount, note: period.note }); }}>Edit</button><button className="sr-delete" onClick={() => deleteLeavePeriod(period.ids)}>Delete</button></span></div>)}</div>}</section></>}
+
+      {tab === 'Advance' && <><section><h2>{editingEntry ? `Edit ${editingEntry.kind}` : "Staff Advance"}</h2><p>Record money given to a staff member. Old balance and total advance are calculated automatically.</p>{editingEntry && <p className="edit-banner">Update this entry, then click Save changes.</p>}{advanceEmployee && <div className="sr-cards"><article><span>Old advance balance</span><strong>{money(oldAdvanceBalance)}</strong></article><article><span>Current advance</span><strong>{money(advanceAmount)}</strong></article><article><span>Total advance</span><strong>{money(oldAdvanceBalance + advanceAmount)}</strong></article></div>}<form key={editingEntry?.id ?? "new-entry"} onSubmit={event => { event.preventDefault(); const saved = saveFinancialEntry(new FormData(event.currentTarget)); if (saved) { setAdvanceAmount(0); setAdvanceEmployee(""); event.currentTarget.reset(); } }}><label>Staff name<select name="employee" required value={advanceEmployee} onChange={event => setAdvanceEmployee(event.target.value)}><option value="">Choose staff</option>{employees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></label><label>Entry type<select name="kind" defaultValue={editingEntry?.kind ?? "Advance"}><option>Advance</option><option>Advance recovery</option></select></label><label>Current advance ₹<input name="amount" type="number" min="0" value={advanceAmount || ''} onChange={event => setAdvanceAmount(Number(event.target.value) || 0)} required/></label><Input name="date" label="Advance date" type="date" value={editingEntry?.date ?? date}/><Input name="note" label="Reason" value={editingEntry?.note} required={false}/><button>{editingEntry ? "Save changes" : "Save entry"}</button>{editingEntry && <button type="button" onClick={() => { setEditingEntry(null); setAdvanceEmployee(""); setAdvanceAmount(0); }}>Cancel</button>}</form>{data.entries.filter(entry => !entry.kind.includes('leave')).length > 0 && <div className="leave-table"><div className="leave-table-header"><span>Staff</span><span>Date</span><span>Type</span><span>Amount</span><span>Reason</span><span></span></div>{[...data.entries].filter(entry => !entry.kind.includes('leave')).sort((a, b) => b.date.localeCompare(a.date)).map(entry => <div className="leave-table-row" key={entry.id}><span><b>{employees.find(employee => employee.id === entry.employee)?.name ?? 'Unknown staff'}</b></span><span>{displayDate(entry.date)}</span><span>{entry.kind}</span><strong>{money(entry.amount)}</strong><span>{entry.note || '—'}</span><span className="leave-actions"><button onClick={() => { setEditingEntry(entry); setAdvanceEmployee(entry.employee); setAdvanceAmount(entry.amount); }}>Edit</button><button className="sr-delete" onClick={() => deleteFinancialEntry(entry)}>Delete</button></span></div>)}</div>}</section></>}
+
+      {tab === 'Report' && <section className="staff-report-page"><div className="salary-head"><div><p className="kicker">STAFF PAYROLL</p><h2>Staff Salary Report</h2><p>Select a staff member to view all finalised salary months and payments.</p></div></div><label className="report-staff-select">Staff name<select value={reportEmployee} onChange={event => setReportEmployee(event.target.value)}><option value="">Choose staff</option>{employees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></label>{reportEmployee && (() => { const staff = employees.find(employee => employee.id === reportEmployee); const reports = data.bills.filter(bill => bill.kind === 'Salary' && bill.entity === reportEmployee).sort((a, b) => b.month.localeCompare(a.month)); const totalSalary = reports.reduce((sum, bill) => sum + bill.total, 0); const totalPaid = reports.reduce((sum, bill) => sum + paid(bill), 0); const totalBalance = reports.reduce((sum, bill) => sum + balance(bill), 0); return <><div className="sr-cards report-summary"><article><span>Staff member</span><strong>{staff?.name}</strong><small>{staff?.role} · {staff?.location}</small></article><article><span>Total salary</span><strong>{money(totalSalary)}</strong></article><article><span>Total paid</span><strong>{money(totalPaid)}</strong></article><article><span>Balance pending</span><strong>{money(totalBalance)}</strong></article></div>{reports.length === 0 ? <p className="empty-state">No finalised salary slips for this staff member.</p> : <div className="salary-report-table"><div className="salary-report-header"><span>Salary month</span><span>Net salary</span><span>Paid</span><span>Balance</span><span></span></div>{reports.map(bill => <div className="salary-report-row" key={bill.id}><span><b>{bill.month}</b><small>{bill.location}</small></span><span>{money(bill.total)}</span><span>{money(paid(bill))}</span><strong className={balance(bill) === 0 ? 'payment-settled' : 'payment-pending'}>{money(balance(bill))}</strong><button onClick={() => setSlip(bill)}>Salary slip</button></div>)}</div>}</>; })()}</section>}
+
+      {tab === 'Payments' && <section className="payments-page"><div className="payments-heading"><div><p className="kicker">STAFF PAYROLL</p><h2>Finalised Salary & Payments</h2><p>Open the pay slip or record the remaining amount.</p></div></div>{finalised.length === 0 ? <p className="empty-state">No finalised salary for {month}.</p> : <div className="payment-list">{finalised.map(bill => <article className="payment-card" key={bill.id}><div className="payment-summary"><div><h3>{bill.name}</h3><p>{bill.location} · Salary month {bill.month}</p></div><div className="payment-total"><span>Balance amount</span><b>{money(balance(bill))}</b></div><button onClick={() => setSlip(bill)}>View salary slip</button></div><div className="payment-stats"><span><small>Net salary</small><b>{money(bill.total)}</b></span><span><small>Paid</small><b>{money(paid(bill))}</b></span><span><small>Status</small><b className={balance(bill) === 0 ? 'payment-settled' : 'payment-pending'}>{balance(bill) === 0 ? 'Paid' : 'Pending'}</b></span></div>{balance(bill) > 0 && <form className="payment-form" onSubmit={event => submit(event, form => recordPayment(form, bill))}><Input name="date" label="Payment date" type="date" value={date}/><Input name="amount" label="Amount to record ₹" type="number"/><label>Method<select name="method"><option>UPI</option><option>Bank transfer</option><option>Cash</option><option>Cheque</option></select></label><Input name="reference" label="Reference (optional)" required={false}/><button>Record payment</button></form>}{bill.payments.length > 0 && <div className="payment-history">{bill.payments.map(payment => <p key={payment.id}><b>{displayDate(payment.date)}</b><span>{payment.method}</span><span>{payment.reference || '—'}</span><strong>{money(payment.amount)}</strong></p>)}</div>}</article>)}</div>}</section>}
+
+      {tab === 'Backup' && <section><h2>Offline backup</h2><p>Download a backup before changing browsers or computers. It contains staff salary, leave, advances and payment records.</p><button onClick={exportBackup}>Download Backup</button><label className="restore">Restore backup<input type="file" accept="application/json,.json" onChange={async event => { const file = event.target.files?.[0]; if (!file) return; try { const restored = JSON.parse(await file.text()); if (!validRecords(restored)) throw Error(); if (confirm('Replace current staff salary records with this backup?')) save(restored, 'Backup restored.'); } catch { setMessage('This backup file is invalid.'); } event.target.value = ''; }} /></label></section>}
+    </>}
+  </div>{slip && <div className="sr-slip"><div className="sr-screen sr-toolbar"><button onClick={() => downloadSalarySlipImage(slip, true)}>Download & Open WhatsApp</button><button className="sr-text-button" onClick={() => downloadSalarySlipImage(slip)}>Download bill only</button><button onClick={() => window.print()}>Print / Save PDF</button><button onClick={() => setSlip(null)}>Close</button></div><header className="salary-slip-brand"><img src="/images/brand/aishwarya-party-hall-logo.jpg" alt="Aishwarya Party Hall logo"/><div><p>AISHWARYA PARTY HALL</p><h1>Salary Slip · சம்பள சீட்டு</h1><span>{slip.location} · Chennai</span></div><b>{slip.month}</b></header><section className="salary-slip-person"><div><span>STAFF MEMBER · பணியாளர்</span><h2>{slip.name}</h2></div><div><span>PAY PERIOD · சம்பள மாதம்</span><b>{slip.month}</b></div></section><dl><div className="slip-group"><b>Salary · சம்பளம்</b></div><div><dt>Monthly salary · மாத சம்பளம்</dt><dd>{money(slip.basic)}</dd></div><div><dt>Unpaid leave · ஊதியமில்லா விடுப்பு</dt><dd>{unpaidLeaveDays(data, slip.entity, slip.month)} day(s) · −{money(slip.leave)}</dd></div><div><dt>Salary after leave · விடுப்புக்குப் பின் சம்பளம்</dt><dd>{money(slip.basic - slip.leave)}</dd></div><div className="slip-group"><b>Advance · முன்பணம்</b></div><div><dt>Previous advance balance · முன் முன்பணம்</dt><dd>{money(slipPreviousAdvance)}</dd></div><div><dt>Current month advance · இந்த மாத முன்பணம்</dt><dd>{money(currentAdvanceForBill(slip))}</dd></div><div><dt>Total advance · மொத்த முன்பணம்</dt><dd>{money(slipPreviousAdvance + currentAdvanceForBill(slip))}</dd></div><div><dt>Advance recovery · முன்பணம் பிடித்தம்</dt><dd>−{money(slip.recovery)}</dd></div><div><dt>Next month advance balance · அடுத்த மாத முன்பணம்</dt><dd>{money(Math.max(0, slipPreviousAdvance + currentAdvanceForBill(slip) - slip.recovery))}</dd></div><div className="slip-group"><b>Other additions · கூடுதல் தொகை</b></div><div><dt>Other additions · கூடுதல் தொகை{additionDetail(slip) ? <small>{additionDetail(slip)}</small> : null}</dt><dd>+{money(slip.extra)}</dd></div><div><dt>Paid · செலுத்தியது</dt><dd>{money(paid(slip))}</dd></div><div className="balance-line"><dt>Balance amount · மீதம்</dt><dd>{money(balance(slip))}</dd></div></dl><footer className="salary-slip-footer"><b>{balance(slip) === 0 ? 'PAYMENT SETTLED · பணம் செலுத்தப்பட்டது' : 'PAYMENT PENDING · பணம் நிலுவையில் உள்ளது'}</b><span>Generated {displayDate(date)} · Aishwarya Party Hall · Padi & Korattur</span></footer></div>}</main>;
 }
