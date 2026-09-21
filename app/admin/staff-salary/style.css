@@ -68,3 +68,4 @@
 .sr-slip .sr-text-button{background:transparent;color:var(--maroon);border:0;box-shadow:none;padding:10px 4px}.sr-slip .sr-text-button:hover{background:transparent;text-decoration:underline}
 .salary-slip-footer{margin-top:20px;padding:22px 26px;background:var(--maroon);color:#fff7df;font-size:14px}.salary-slip-footer b{color:#f2c15d;font-weight:800;letter-spacing:1.2px}.salary-slip-footer span{color:#fff7df}
 .sr-slip dl dt small{display:block;margin-top:5px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:0;text-transform:none}
+.sr-slip dl .slip-group{display:block;min-height:0;padding:18px 0 6px;background:transparent;border:0;color:var(--maroon);font-size:13px;letter-spacing:1px;text-transform:uppercase}.sr-slip dl .slip-group b{font-weight:800}
