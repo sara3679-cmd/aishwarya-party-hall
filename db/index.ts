@@ -98,3 +98,25 @@ export async function staffRentStore() {
     },
   };
 }
+
+let pageHitsReady: Promise<void> | null = null;
+async function ensurePageHitsTable() {
+  if (!env.DB) throw new Error("Cloudflare D1 binding `DB` is unavailable.");
+  if (!pageHitsReady) pageHitsReady = env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS page_hits (visit_date TEXT NOT NULL, page_path TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (visit_date, page_path))"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS page_hits_date_idx ON page_hits (visit_date DESC)"),
+  ]).then(() => undefined).catch(error => { pageHitsReady = null; throw error; });
+  return pageHitsReady;
+}
+function indiaDate() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
+export async function recordPageHit(path: string) {
+  await ensurePageHitsTable();
+  await env.DB.prepare("INSERT INTO page_hits (visit_date, page_path, hits) VALUES (?, ?, 1) ON CONFLICT(visit_date, page_path) DO UPDATE SET hits = hits + 1").bind(indiaDate(), path).run();
+}
+export async function pageHitSummary() {
+  await ensurePageHitsTable();
+  const days = await env.DB.prepare("SELECT visit_date AS date, page_path AS path, hits FROM page_hits ORDER BY visit_date DESC, hits DESC LIMIT 180").all<{ date: string; path: string; hits: number }>();
+  const total = await env.DB.prepare("SELECT COALESCE(SUM(hits), 0) AS hits FROM page_hits").first<{ hits: number }>();
+  const today = await env.DB.prepare("SELECT COALESCE(SUM(hits), 0) AS hits FROM page_hits WHERE visit_date = ?").bind(indiaDate()).first<{ hits: number }>();
+  return { today: today?.hits ?? 0, total: total?.hits ?? 0, days: days.results ?? [] };
+}

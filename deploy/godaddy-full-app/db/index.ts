@@ -60,3 +60,24 @@ export async function staffRentStore() {
     },
   };
 }
+
+let pageHitsReady: Promise<void> | null = null;
+async function ensurePageHitsTable() {
+  getDb();
+  if (!pageHitsReady) pageHitsReady = (async () => {
+    await pool!.query("CREATE TABLE IF NOT EXISTS page_hits (visit_date DATE NOT NULL, page_path VARCHAR(255) NOT NULL, hits BIGINT UNSIGNED NOT NULL DEFAULT 0, PRIMARY KEY (visit_date, page_path), INDEX page_hits_date_idx (visit_date))");
+  })().catch(error => { pageHitsReady = null; throw error; });
+  return pageHitsReady;
+}
+function indiaDate() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
+export async function recordPageHit(path: string) {
+  await ensurePageHitsTable();
+  await pool!.execute("INSERT INTO page_hits (visit_date, page_path, hits) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE hits = hits + 1", [indiaDate(), path]);
+}
+export async function pageHitSummary() {
+  await ensurePageHitsTable();
+  const [days] = await pool!.query<mysql.RowDataPacket[]>("SELECT DATE_FORMAT(visit_date, '%Y-%m-%d') AS date, page_path AS path, hits FROM page_hits ORDER BY visit_date DESC, hits DESC LIMIT 180");
+  const [totalRows] = await pool!.query<mysql.RowDataPacket[]>("SELECT COALESCE(SUM(hits), 0) AS hits FROM page_hits");
+  const [todayRows] = await pool!.execute<mysql.RowDataPacket[]>("SELECT COALESCE(SUM(hits), 0) AS hits FROM page_hits WHERE visit_date = ?", [indiaDate()]);
+  return { today: Number(todayRows[0]?.hits || 0), total: Number(totalRows[0]?.hits || 0), days: days.map(row => ({ date: String(row.date), path: String(row.path), hits: Number(row.hits) })) };
+}

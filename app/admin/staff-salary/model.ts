@@ -8,6 +8,17 @@ export const emptyRecords: Records = { version: 1, employees: [], entries: [], h
 export const round = (n: number) => Math.round(n);
 export const paid = (b: Bill) => round(b.payments.reduce((s, p) => s + p.amount, 0));
 export const balance = (b: Bill) => round(Math.max(0, b.total - paid(b)));
+export function rentPaymentWindow(month: string) {
+  const [year, number] = month.split('-').map(Number);
+  const next = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, '0')}`;
+  return { start: `${next}-01`, end: `${next}-10` };
+}
+export function renewalReminderStart(renewal: string) {
+  const [year, month, day] = renewal.split('-').map(Number);
+  const previous = new Date(year, month - 2, 1);
+  const lastDay = new Date(year, month - 1, 0).getDate();
+  return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+}
 export function advanceBalance(data: Records, employee: string, through = '9999-12-31') {
   const advances = data.entries.filter(e => e.employee === employee && e.kind === 'Advance' && e.date <= through).reduce((s, e) => s + e.amount, 0);
   // Finalised payroll reserves recovery once, including payroll awaiting payment.
