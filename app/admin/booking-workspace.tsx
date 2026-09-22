@@ -181,6 +181,7 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
           {staff.role === "admin" && <a href="/admin/greetings"><b>Customer Greetings &amp; Advertisements</b><span>Prepare, approve and track messages for past and present customers</span></a>}
           {staff.role === "admin" && <a href="/admin/staff-salary"><b>Staff Salary</b><span>Employees, leave, advances and salary payments</span></a>}
           {staff.role === "admin" && <a href="/admin/hall-rent"><b>Hall Rent</b><span>Hall agreements, rent payments and renewals</span></a>}
+          {staff.role === "admin" && <a href="/admin/korattur-bookings-import"><b>Import Korattur Bookings</b><span>Add Korattur booking records from a backup</span></a>}
           <a href="/admin/cctv"><b>Live CCTV</b><span>Staff-only camera dashboard</span></a>
         </div>
       </article>
