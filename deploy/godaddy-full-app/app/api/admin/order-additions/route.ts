@@ -33,7 +33,11 @@ function parseAddition(payload: Record<string, unknown>) {
 }
 
 function forClient<T extends { advanceEntries: unknown }>(row: T) {
-  return { ...row, advanceEntries: JSON.stringify(row.advanceEntries ?? []) };
+  let entries = row.advanceEntries ?? [];
+  if (typeof entries === "string") {
+    try { entries = JSON.parse(entries); } catch { entries = []; }
+  }
+  return { ...row, advanceEntries: JSON.stringify(Array.isArray(entries) ? entries : []) };
 }
 
 export async function GET(request: Request) {

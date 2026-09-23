@@ -26,7 +26,13 @@ function parseAddition(payload: Record<string, unknown>) {
     discountQty: Math.round(values.discountQty), discountRate: Math.round(values.discountRate), advanceTotal: Math.round(values.advanceTotal),
     mealSession: values.mealSession as "Breakfast" | "Lunch" | "Dinner", foodType: values.foodType as "Veg" | "Non-Veg" };
 }
-function forClient<T extends { advanceEntries: unknown }>(row: T) { return { ...row, advanceEntries: JSON.stringify(row.advanceEntries ?? []) }; }
+function forClient<T extends { advanceEntries: unknown }>(row: T) {
+  let entries = row.advanceEntries ?? [];
+  if (typeof entries === "string") {
+    try { entries = JSON.parse(entries); } catch { entries = []; }
+  }
+  return { ...row, advanceEntries: JSON.stringify(Array.isArray(entries) ? entries : []) };
+}
 
 async function requireAdmin(request: Request) { return (await getStaffSession(request))?.role === "admin"; }
 async function additionId(context: { params: Promise<{ id: string }> }) { return Number((await context.params).id); }
