@@ -12,6 +12,13 @@ function download(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function contactDate(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "";
+  const [, year, month, day] = match;
+  return `${day}${["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][Number(month) - 1]}${year}`;
+}
+
 export default function GreetingsPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [bookings, setBookings] = useState<CustomerBooking[]>([]);
@@ -170,7 +177,7 @@ export default function GreetingsPage() {
         <h2>2. Choose customers</h2>
         <p><strong>{customers.length} customers</strong> from your full confirmed booking history. Duplicate primary mobile numbers appear once.</p>
         <div className="greetingsFilters">
-          <label>Customers<select value={period} onChange={event => setPeriod(event.target.value)}><option value="All">Past and present</option><option value="Past">Past functions</option><option value="Upcoming">Today and upcoming functions</option></select></label>
+          <label>Customers<select value={period} onChange={event => setPeriod(event.target.value)}><option value="All">All</option><option value="Past">Past functions</option><option value="Upcoming">Today and upcoming functions</option></select></label>
           <label>Location<select value={location} onChange={event => setLocation(event.target.value)}><option>All</option><option>Padi</option><option>Korattur</option></select></label>
           <label>Functions through<input type="date" value={until} onChange={event => setUntil(event.target.value)} /></label>
         </div>
@@ -190,9 +197,9 @@ export default function GreetingsPage() {
       <p>Messages use the account signed into WhatsApp. Opening a chat does not send anything or attach the image. Attach the downloaded image, check the message and press Send.</p>
       {sendingAvailable && <div className="greetingsNotice"><strong>Send through Meta API</strong><p>Meta sends the approved template to up to 100 pending customers at a time. It sends the template registered in Meta, not this page’s custom poster or message.</p><label className="greetingsConsent"><input type="checkbox" checked={sendPermission} onChange={event => setSendPermission(event.target.checked)} />I confirm I want Meta to send this batch of up to 100 approved recipients now.</label><button disabled={busy || !pending.length || !sendPermission} onClick={sendMetaBatch}>{busy ? "Sending through Meta…" : `Send next Meta batch · ${Math.min(100, pending.length)} customers`}</button></div>}
       <div className="greetingsButtons">{draft.image && <button onClick={downloadImage}>Download image</button>}<button disabled={!draft.message} onClick={copyMessage}>Copy message</button><button className="secondary" disabled={!draft.message} onClick={() => download(new Blob([draft.message], { type: "text/plain;charset=utf-8" }), "aishwarya-message.txt")}>Download message</button></div>
-      <details className="greetingsBroadcast"><summary>Send as a broadcast from your phone</summary><p>Download the selected contacts in batches of up to 100 and import them on your phone if needed. Names begin with APH and the batch number. Open New broadcast in WhatsApp, select the customers in that batch, attach the image and paste the message.</p><p>Standard broadcasts reach customers who have saved the sending number. Follow any limits or charges shown in your phone app.</p><div className="greetingsButtons">{Array.from({ length: Math.ceil(selected.length / 100) }, (_, index) => {
+      <details className="greetingsBroadcast"><summary>Send as a broadcast from your phone</summary><p>Download the selected contacts in batches of up to 100 and import them on your phone if needed. Contact names use APH, the batch number, customer name and their latest booking date, for example APH - B1 - Name - 15SEP2026. Open New broadcast in WhatsApp, select the customers in that batch, attach the image and paste the message.</p><p>Standard broadcasts reach customers who have saved the sending number. Follow any limits or charges shown in your phone app.</p><div className="greetingsButtons">{Array.from({ length: Math.ceil(selected.length / 100) }, (_, index) => {
         const batch = selected.slice(index * 100, (index + 1) * 100);
-        return <button key={index} className="secondary" onClick={() => download(new Blob([makeVcards(batch.map(c => ({ ...c, customerName: `B${index + 1} - ${c.customerName}` })))], { type: "text/vcard;charset=utf-8" }), `aishwarya-batch-${index + 1}-${batch.length}-customers.vcf`)}>Download batch {index + 1} · {batch.length} contacts</button>;
+        return <button key={index} className="secondary" onClick={() => download(new Blob([makeVcards(batch.map(c => ({ ...c, customerName: `B${index + 1} - ${c.customerName} - ${contactDate(c.bookingDate)}` })))], { type: "text/vcard;charset=utf-8" }), `aishwarya-batch-${index + 1}-${batch.length}-customers.vcf`)}>Download batch {index + 1} · {batch.length} contacts</button>;
       })}</div><p className="greetingsHint">After sending, mark only the customers you actually sent to in the list below.</p></details>
       <label className="greetingsConsent"><input type="checkbox" checked={onlyPending} onChange={event => setOnlyPending(event.target.checked)} />Show pending customers only</label>
       <div className="greetingsTable"><table><thead><tr><th>Customer</th><th>WhatsApp</th><th>Your sending record</th></tr></thead><tbody>{sendList.map(customer => <tr key={customer.number}><td><strong>{customer.customerName}</strong><br />+{customer.number}</td><td>{!draft.sent[customer.number] ? <a className="greetingsWhatsapp" href={whatsappLink(customer.number, draft.message)} target="_blank" rel="noopener noreferrer">Open WhatsApp</a> : <span>Marked sent</span>}</td><td>{draft.sent[customer.number] ? <><span className="greetingsHint">Marked by you · {formatDate(draft.sent[customer.number])}</span><br /><button className="secondary" disabled={busy} onClick={() => recordSent(customer.number, true)}>Undo mark</button></> : <button disabled={busy} onClick={() => recordSent(customer.number)}>I sent this — mark sent</button>}</td></tr>)}</tbody></table>{!sendList.length && <p>{pending.length ? "No customers shown." : "All selected customers are marked sent by you."}</p>}</div>
