@@ -24,15 +24,15 @@ export async function POST(request: Request) {
   const role = payload.role?.trim();
   if (!username || !/^[a-z0-9._-]{3,30}$/.test(username)) return Response.json({ error: "Username must be 3–30 letters, numbers, dots, hyphens or underscores" }, { status: 400 });
   if (password.length < 8) return Response.json({ error: "Password must contain at least 8 characters" }, { status: 400 });
-  if (!role || !["admin", "viewer", "decorator"].includes(role)) return Response.json({ error: "Choose a valid account role" }, { status: 400 });
+  if (!role || !["admin", "viewer", "decorator", "photographer"].includes(role)) return Response.json({ error: "Choose a valid account role" }, { status: 400 });
   let mobile: string;
   try { mobile = normalizeStaffMobile(payload.mobile ?? ""); } catch (error) { return Response.json({error: error instanceof Error ? error.message : "Invalid mobile number"}, {status:400}); }
-  if (role === "decorator" && !mobile) return Response.json({error:"Enter the decorator’s WhatsApp mobile number"},{status:400});
+  if (["decorator", "photographer"].includes(role) && !mobile) return Response.json({error:"Enter the service provider’s WhatsApp mobile number"},{status:400});
   await ensureStaffMobileColumn();
   const db = getDb();
   const [existing] = await db.select({ id: staffUsers.id }).from(staffUsers).where(eq(staffUsers.username, username)).limit(1);
   if (existing || username === process.env.ADMIN_USERNAME || username === process.env.VIEWER_USERNAME) return Response.json({ error: "That username already exists" }, { status: 409 });
   const salt = createSalt();
-  const [user] = await db.insert(staffUsers).values({ username, mobile, passwordSalt: salt, passwordHash: await hashPassword(password, salt), role: role as "admin" | "viewer" | "decorator" }).returning({ id: staffUsers.id, username: staffUsers.username, role: staffUsers.role, mobile: staffUsers.mobile, createdAt: staffUsers.createdAt });
+  const [user] = await db.insert(staffUsers).values({ username, mobile, passwordSalt: salt, passwordHash: await hashPassword(password, salt), role: role as "admin" | "viewer" | "decorator" | "photographer" }).returning({ id: staffUsers.id, username: staffUsers.username, role: staffUsers.role, mobile: staffUsers.mobile, createdAt: staffUsers.createdAt });
   return Response.json({ user }, { status: 201 });
 }

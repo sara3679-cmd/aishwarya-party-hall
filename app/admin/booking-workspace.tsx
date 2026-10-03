@@ -10,7 +10,7 @@ import { AdminReminders } from "./admin-reminders";
 import { CustomerBillPreview } from "./customer-bill-preview";
 
 type Booking = { id: number; location: string; bookingDate: string; startTime: string; endTime: string; billNo: string; functionName: string; customerName: string; mobile: string; mobile2?: string; address?: string; createdAt?: string; amount?: number; advanceReceived?: number; cctvPassword?: string; status: string };
-type Staff = { username: string; role: "admin" | "viewer" | "decorator" };
+type Staff = { username: string; role: "admin" | "viewer" | "decorator" | "photographer" };
 const functionNames = ["Birthday Party", "Engagement", "Baby Shower", "Naming Ceremony", "Ear Boring", "Puberty", "Betrothal", "Wedding Reception", "Get Together", "Seminar / Training", "Corporate Event", "Small Exhibition", "Other Function"];
 
 async function readJson(response: Response): Promise<Record<string, unknown>> {
@@ -148,7 +148,9 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
   }
 
   if (checking) return <main className="adminPage"><p>Loading secure access…</p></main>;
-  if (!staff) return <main className="adminPage loginPage"><form className="adminLogin" onSubmit={login}><p className="kicker">Secure staff access</p><h1>Aishwarya Administration</h1><p>Administrators can manage bookings. Viewers can only read booking information.</p><label>Username<input name="username" required autoComplete="username" /></label><label>Password<input name="password" required type="password" autoComplete="current-password" /></label><button>Sign in</button>{message && <p className="adminMessage">{message}</p>}<a href="/">← Return to website</a></form></main>;
+  if (!staff) return <main className="adminPage loginPage"><form className="adminLogin" onSubmit={login}><p className="kicker">Secure staff access</p><h1>Aishwarya Administration</h1><p>Administrators manage bookings and approvals. Photographers and decorators can sign in to manage their portfolios. Viewers can read booking information.</p><label>Username<input name="username" required autoComplete="username" /></label><label>Password<input name="password" required type="password" autoComplete="current-password" /></label><button>Sign in</button>{message && <p className="adminMessage">{message}</p>}<a href="/">← Return to website</a></form></main>;
+
+
 
   const confirmed = bookings.filter((item) => item.status === "confirmed").sort((a, b) => a.bookingDate.localeCompare(b.bookingDate) || a.startTime.localeCompare(b.startTime) || a.endTime.localeCompare(b.endTime) || a.id - b.id);
   const latestIds = new Map<string, number>();
@@ -171,10 +173,11 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
   const koratturValue = koratturMonth.reduce((sum, item) => sum + (item.amount ?? 0), 0);
 
   if (view === "dashboard") return <main className="adminPage adminDashboardPage">
-    <header className="adminHeader dashboardHeader"><div><p className="kicker">Private administration</p><h1>Aishwarya Administration</h1><p className="staffRole">Signed in as {staff.username} · {staff.role === "admin" ? "Administrator" : staff.role === "decorator" ? "Decorator · Viewer access" : "Read-only viewer"}</p></div></header>
+    <header className="adminHeader dashboardHeader"><div><p className="kicker">Private administration</p><h1>Aishwarya Administration</h1><p className="staffRole">Signed in as {staff.username} · {staff.role === "admin" ? "Administrator" : staff.role === "decorator" ? "Decorator · Viewer access" : staff.role === "photographer" ? "Photographer · Viewer access" : "Read-only viewer"}</p></div></header>
     <section className="adminDashboardGroups">
+      {staff.role === "photographer" && <article className="adminDashboardGroup"><p className="kicker">Photography</p><h2>My Photography</h2><div className="dashboardLinkGrid"><a href="/admin/photography"><b>Manage Portfolio &amp; Packages</b><span>Submit sample work and packages for administrator approval</span></a></div></article>}
       {staff.role === "decorator" && <article className="adminDashboardGroup"><p className="kicker">Stage Decorations</p><h2>My Decorations</h2><div className="dashboardLinkGrid"><a href="/admin/decorations"><b>Upload &amp; Manage My Designs</b><span>Submit decoration designs for administrator approval</span></a></div></article>}
-      {staff.role === "admin" && <><AdminReminders /><a className="maroonButton" href="/admin/decorations">Stage Decorations &amp; Approvals →</a></>}
+      {staff.role === "admin" && <><AdminReminders /><a className="maroonButton" href="/admin/decorations">Stage Decorations &amp; Approvals →</a><a className="maroonButton" href="/admin/photography">Photography &amp; Approvals →</a></>}
       <article className="adminDashboardGroup partyHallDashboard"><p className="kicker">Aishwarya Party Hall</p><h2>Booking Administration</h2><div className="dashboardLinkGrid">{staff.role === "admin" && <a className="primaryDashboardLink" href="/admin/bookings/new"><b>Hall Booking</b><span>Create a new confirmed hall booking</span></a>}<a href="/admin/bookings"><b>Booking Manager</b><span>View, edit and manage confirmed bookings</span></a>{staff.role === "admin" && <a href="/admin/financial"><b>New Expenses &amp; Revenue</b><span>Add booking expenses and additional revenue</span></a>}{staff.role === "admin" && <a href="/admin/reports/bookings"><b>Booking Expenses &amp; Revenue</b><span>Booking expenses and revenue</span></a>}{staff.role === "admin" && <a href="/admin/financial/profit-loss"><b>Profit &amp; Loss Summary</b><span>Monthly and yearly profit or loss</span></a>}</div></article>
       {staff.role === "admin" && <article className="adminDashboardGroup operationsDashboard">
         <p className="kicker">Administration</p><h2>Customer &amp; Hall Operations</h2>

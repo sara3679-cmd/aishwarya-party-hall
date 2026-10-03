@@ -89,6 +89,6 @@ export function ensureStaffMobileColumn() {
   const db=mysqlPool();const [columns]=await db.query<mysql.RowDataPacket[]>("SHOW COLUMNS FROM staff_users");
   if(!columns.some(column=>column.Field==='mobile')) {try{await db.query("ALTER TABLE staff_users ADD COLUMN mobile VARCHAR(20) NOT NULL DEFAULT ''");}catch(error){if((error as {code?:string}).code!=='ER_DUP_FIELDNAME')throw error;}}
   const role=columns.find(column=>column.Field==='role');
-  if(role && !String(role.Type).includes("decorator")) await db.query("ALTER TABLE staff_users MODIFY COLUMN role ENUM('admin','viewer','decorator') NOT NULL");
+  if(role && !String(role.Type).includes("photographer")) await db.query("ALTER TABLE staff_users MODIFY COLUMN role ENUM('admin','viewer','decorator','photographer') NOT NULL");
  })().catch(error=>{staffMobileReady=null;throw error;});return staffMobileReady;
 }

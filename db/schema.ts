@@ -71,7 +71,7 @@ export const staffUsers = sqliteTable(
     passwordHash: text("password_hash").notNull(),
     passwordSalt: text("password_salt").notNull(),
     mobile: text("mobile").notNull().default(""),
-    role: text("role", { enum: ["admin", "viewer", "decorator"] }).notNull(),
+    role: text("role", { enum: ["admin", "viewer", "decorator", "photographer"] }).notNull(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [uniqueIndex("staff_users_username_idx").on(table.username)],

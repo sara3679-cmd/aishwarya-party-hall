@@ -1,3 +1,4 @@
+import { photographyStore } from "../../../../lib/photography-store";
 import { applicationTable, quoteIdentifier, restoreCommands, validSnapshot, type DatabaseSnapshot } from "../../../../lib/full-database-backup";
 import { asc } from "drizzle-orm";
 import { ensureStaffMobileColumn, ensureOrderAdditionsTable, ensureBookingCctvPasswordColumn, ensureExpenseOrderColumn, staffRentStore, getDb } from "../../../../db";
@@ -51,7 +52,7 @@ function validateBackup(value: unknown): value is BackupData {
   return bookingRows.every((item) => isRecord(item) && integer(item, "id") && ["Padi", "Korattur"].includes(String(item.location)) && ["confirmed", "cancelled"].includes(String(item.status)) && ["bookingDate", "startTime", "endTime", "billNo", "functionName", "customerName", "mobile", "createdAt"].every((key) => text(item, key)) && integer(item, "amount") && integer(item, "advanceReceived"))
     && expenseRows.every((item) => isRecord(item) && integer(item, "id") && ["Padi", "Korattur", "General"].includes(String(item.location)) && ["expenseDate", "category", "description", "createdAt"].every((key) => text(item, key)) && integer(item, "amount"))
     && incomeRows.every((item) => isRecord(item) && integer(item, "id") && ["Padi", "Korattur", "General"].includes(String(item.location)) && ["incomeDate", "category", "description", "createdAt"].every((key) => text(item, key)) && integer(item, "amount"))
-    && userRows.every((item) => isRecord(item) && integer(item, "id") && ["admin", "viewer", "decorator"].includes(String(item.role)) && ["username", "passwordHash", "passwordSalt", "createdAt"].every((key) => text(item, key)))
+    && userRows.every((item) => isRecord(item) && integer(item, "id") && ["admin", "viewer", "decorator", "photographer"].includes(String(item.role)) && ["username", "passwordHash", "passwordSalt", "createdAt"].every((key) => text(item, key)))
     && (!Array.isArray(additionRows) || additionRows.every((item) => isRecord(item) && integer(item, "id") && text(item, "orderId") && text(item, "itemName") && text(item, "functionDate") && text(item, "functionTime") && integer(item, "originalQty") && integer(item, "rate")))
     && (Number(value.version) < 4 || ["cateringMenuItems", "cctvCameras", "greetingDrafts", "greetingSettings", "greetingSends"].every((key) => Array.isArray((value.data as Record<string, unknown>)[key])));
 }
@@ -81,7 +82,7 @@ async function exportDatabaseSnapshot(): Promise<DatabaseSnapshot> {
 async function restoreFullDatabase(snapshot:DatabaseSnapshot) {
  const schema=await databaseSchema();
  const revisions:Record<string,number>={};
- for(const name of ['staff_rent_records','decoration_catalog']) {
+ for(const name of ['staff_rent_records','decoration_catalog','photography_catalog']) {
   if(schema.some(table=>table.name===name)) {const row=await env.DB.prepare(`SELECT revision FROM ${quoteIdentifier(name)} WHERE id=1`).first<{revision:number}>();revisions[name]=row?.revision ?? 0;}
  }
  const commands=restoreCommands(snapshot,schema,revisions);
@@ -97,6 +98,7 @@ export async function GET(request: Request) {
   await ensureExpenseOrderColumn();
   await staffRentStore();
   await decorationStore();
+  await photographyStore();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS page_hits (visit_date TEXT NOT NULL, page_path TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (visit_date,page_path))").run();
   const db = getDb();
   await ensureExtraBackupTables();
@@ -182,7 +184,8 @@ export async function POST(request: Request) {
         ...rows("greetingSends").map((row) => env.DB.prepare("INSERT INTO greeting_manual_sends (campaign_id,phone_number,marked_at) VALUES (?,?,?)").bind(row.campaignId,row.number,row.markedAt)),
       ]);
     }
-    if (payload.data.decorationCatalog) { const store=await decorationStore(); const current=await store.read(); await store.write(payload.data.decorationCatalog,current.revision); }
+    if (payload.data.decorationCatalog) { const store=await decorationStore();
+  await photographyStore(); const current=await store.read(); await store.write(payload.data.decorationCatalog,current.revision); }
     return Response.json({ success: true, counts: { bookings: payload.data.bookings.length, expenses: payload.data.expenses.length, additionalIncome: payload.data.additionalIncome.length, staffUsers: payload.data.staffUsers.length, orderAdditions: payload.version >= 2 ? additionRows.length : null } });
   } catch (error) {
     console.error("Backup restore failed", error);

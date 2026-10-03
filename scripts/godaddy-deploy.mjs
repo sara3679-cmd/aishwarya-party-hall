@@ -35,12 +35,14 @@ function syncProjectFiles() {
   replace(join(root, "lib"), join(deployRoot, "lib"));
   // The offline catalog uses D1; production uses its MySQL adapter.
   writeFileSync(join(deployRoot, "lib", "decoration-store.ts"), 'export { decorationStore } from "../db/decoration-store";\n');
+  writeFileSync(join(deployRoot, "lib", "photography-store.ts"), 'export { photographyStore } from "../db/photography-store";\n');
   cpSync(join(root, "public"), join(deployRoot, "public"), { recursive: true });
 
   // Keep GoDaddy's MySQL API routes, but refresh all UI and page code.
   for (const name of [
     "admin",
     "decorations",
+    "photography",
     "cctv",
     "catering",
     "privacy",

@@ -1,6 +1,7 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import { mysqlPool, staffRentStore, ensureStaffMobileColumn } from './index';
 import { decorationStore } from './decoration-store';
+import { photographyStore } from './photography-store';
 import { applicationTable, validSnapshot, restoreCommands, type DatabaseSnapshot, type DatabaseValue } from '../lib/full-database-backup';
 const quote=(name:string)=>{if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))throw new Error('Invalid table name');return '`'+name+'`';};
 async function schema(){
@@ -11,7 +12,7 @@ async function schema(){
  }));
 }
 export async function exportFullDatabase():Promise<DatabaseSnapshot>{
- await ensureStaffMobileColumn();await staffRentStore();await decorationStore();
+ await ensureStaffMobileColumn();await staffRentStore();await decorationStore();await photographyStore();
  const tables=await schema();const connection=await mysqlPool().getConnection();
  try{
  await connection.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');await connection.beginTransaction();
@@ -22,13 +23,13 @@ export async function exportFullDatabase():Promise<DatabaseSnapshot>{
 }
 export async function restoreFullDatabase(snapshot:DatabaseSnapshot){
  if(!validSnapshot(snapshot))throw new Error('Invalid full database backup');
- await ensureStaffMobileColumn();await staffRentStore();await decorationStore();
+ await ensureStaffMobileColumn();await staffRentStore();await decorationStore();await photographyStore();
  const current=await schema();
  for(const table of snapshot.tables){if(current.find(t=>t.name===table.name)?.engine!=='InnoDB')throw new Error(`A matching transactional database table is required: ${table.name}`);}
  const connection=await mysqlPool().getConnection();
  try{
  await connection.beginTransaction();const revisions:Record<string,number>={};
- for(const name of ['staff_rent_records','decoration_catalog']){const [rows]=await connection.query<RowDataPacket[]>(`SELECT revision FROM ${quote(name)} WHERE id=1 FOR UPDATE`);revisions[name]=Number(rows[0]?.revision??0);}
+ for(const name of ['staff_rent_records','decoration_catalog','photography_catalog']){const [rows]=await connection.query<RowDataPacket[]>(`SELECT revision FROM ${quote(name)} WHERE id=1 FOR UPDATE`);revisions[name]=Number(rows[0]?.revision??0);}
  const commands=restoreCommands({...snapshot,sequences:[]},current,revisions);
  for(const command of commands)await connection.query(command.sql.replace(/"([A-Za-z_][A-Za-z0-9_]*)"/g,'`$1`'),command.values);
  await connection.commit();

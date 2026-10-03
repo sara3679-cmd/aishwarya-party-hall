@@ -73,7 +73,7 @@ export default function Home() {
         <nav className={menuOpen ? "open" : ""} aria-label="Main navigation">
           <a href="#about" onClick={() => setMenuOpen(false)}>About Us</a>
           <a href="#locations" onClick={() => setMenuOpen(false)}>Locations</a>
-          <a href="/decorations" onClick={() => setMenuOpen(false)}>Stage Decorations</a><a href="#gallery" onClick={() => setMenuOpen(false)}>Gallery</a>
+          <a href="/photography" onClick={() => setMenuOpen(false)}>Photography</a><a href="/decorations" onClick={() => setMenuOpen(false)}>Stage Decorations</a><a href="#gallery" onClick={() => setMenuOpen(false)}>Gallery</a>
           <a href="/catering" onClick={() => setMenuOpen(false)}>Catering – SS Foods</a>
           <a href="#facilities" onClick={() => setMenuOpen(false)}>Facilities</a>
           <a href="#enquiry" onClick={() => setMenuOpen(false)}>Availability Calendar</a>
@@ -118,7 +118,7 @@ export default function Home() {
         <div className="photoGrid">{galleries[gallery].map(([src, alt], index) => <button key={src} className={index === 0 ? "featurePhoto" : ""} onClick={() => setActiveImage(index)} aria-label={`Open ${alt}`}><img src={src} alt={alt} loading={index > 3 ? "lazy" : "eager"}/><span>View</span></button>)}</div>
       </section>
 
-      <section className="planning sectionPad"><div><p className="kicker">Decoration inspiration</p><h2>A stage for your<br/><em>special celebration.</em></h2><p>Explore birthday, baby shower, reception and other decoration designs for Padi and Korattur.</p><a className="maroonButton" href="/decorations">Browse Stage Decorations →</a></div><FeaturedDecorations /></section><section className="catering sectionPad" id="catering">
+      <section className="planning sectionPad"><div><p className="kicker">Decoration inspiration</p><h2>A stage for your<br/><em>special celebration.</em></h2><p>Explore birthday, baby shower, reception and other decoration designs for Padi and Korattur.</p><a className="maroonButton" href="/decorations">Browse Stage Decorations →</a></div><FeaturedDecorations /></section><section className="planning sectionPad"><div><p className="kicker">Capture your celebration</p><h2>Memories to<br/><em>keep forever.</em></h2><p>Browse photographer portfolios and packages for birthdays, baby showers, engagements and receptions at Padi and Korattur.</p><a className="maroonButton" href="/photography">Explore Photography →</a></div><div><h3>Find your photographer</h3><p>View sample work, compare coverage and inclusions, and enquire directly on WhatsApp with your event details.</p></div></section><section className="catering sectionPad" id="catering">
         <div className="cateringVisual"><img src="/images/brand/ssfoods-logo-official.jpg" alt="SS Foods Catering Service logo"/><div className="plate plateOne"/><div className="plate plateTwo"/></div>
         <div className="cateringCopy"><p className="kicker">Our catering partner</p><h2>Good food.<br/><em>Great memories.</em></h2><p>SS Foods Catering Service brings generous hospitality to your table with freshly prepared vegetarian and non-vegetarian menus for every kind of celebration.</p><div className="foodTypes"><span><b>VEG</b>Traditional favourites & custom menus</span><span><b>NON-VEG</b>Flavourful dishes made for your occasion</span></div><a className="maroonButton" href="/catering">Explore SS Foods Catering <span>→</span></a></div>
       </section>

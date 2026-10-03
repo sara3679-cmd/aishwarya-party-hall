@@ -1,4 +1,4 @@
-export type StaffRole = "admin" | "viewer" | "decorator";
+export type StaffRole = "admin" | "viewer" | "decorator" | "photographer";
 import { eq } from "drizzle-orm";
 import { ensureStaffMobileColumn, getDb } from "../db";
 import { staffUsers } from "../db/schema";
@@ -34,7 +34,7 @@ export function clearStaffCookie() {
   return `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
 }
 
-export async function getStaffSession(request: Request): Promise<StaffSession | null> {
+export async function getStaffSession(request: Request, allowPhotographer = false): Promise<StaffSession | null> {
   const cookie = request.headers.get("cookie") ?? "";
   const token = cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith(`${COOKIE_NAME}=`))?.slice(COOKIE_NAME.length + 1);
   if (!token) return null;
@@ -43,7 +43,8 @@ export async function getStaffSession(request: Request): Promise<StaffSession | 
   try {
     const decoded = payload.replace(/-/g, "+").replace(/_/g, "/");
     const session = JSON.parse(atob(decoded)) as StaffSession;
-    if (session.expiresAt < Date.now() || !["admin", "viewer", "decorator"].includes(session.role)) return null;
+    if (session.expiresAt < Date.now() || !["admin", "viewer", "decorator", "photographer"].includes(session.role)) return null;
+    if (session.role === "photographer" && !allowPhotographer) return {...session, role: "viewer"};
     return session;
   } catch { return null; }
 }
