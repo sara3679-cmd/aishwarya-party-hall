@@ -48,7 +48,8 @@ export const staffUsers = mysqlTable("staff_users", {
   username: varchar("username", { length: 30 }).notNull(),
   passwordHash: varchar("password_hash", { length: 64 }).notNull(),
   passwordSalt: varchar("password_salt", { length: 32 }).notNull(),
-  role: mysqlEnum("role", ["admin", "viewer"]).notNull(),
+  mobile: varchar("mobile", { length: 20 }).notNull().default(""),
+  role: mysqlEnum("role", ["admin", "viewer", "decorator"]).notNull(),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("staff_users_username_idx").on(table.username)]);
 

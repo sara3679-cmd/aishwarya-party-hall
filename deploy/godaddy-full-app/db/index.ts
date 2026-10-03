@@ -81,3 +81,14 @@ export async function pageHitSummary() {
   const [todayRows] = await pool!.execute<mysql.RowDataPacket[]>("SELECT COALESCE(SUM(hits), 0) AS hits FROM page_hits WHERE visit_date = ?", [indiaDate()]);
   return { today: Number(todayRows[0]?.hits || 0), total: Number(totalRows[0]?.hits || 0), days: days.map(row => ({ date: String(row.date), path: String(row.path), hits: Number(row.hits) })) };
 }
+
+export function mysqlPool() { getDb(); return pool!; }
+let staffMobileReady: Promise<void> | null = null;
+export function ensureStaffMobileColumn() {
+ if (!staffMobileReady) staffMobileReady=(async()=>{
+  const db=mysqlPool();const [columns]=await db.query<mysql.RowDataPacket[]>("SHOW COLUMNS FROM staff_users");
+  if(!columns.some(column=>column.Field==='mobile')) {try{await db.query("ALTER TABLE staff_users ADD COLUMN mobile VARCHAR(20) NOT NULL DEFAULT ''");}catch(error){if((error as {code?:string}).code!=='ER_DUP_FIELDNAME')throw error;}}
+  const role=columns.find(column=>column.Field==='role');
+  if(role && !String(role.Type).includes("decorator")) await db.query("ALTER TABLE staff_users MODIFY COLUMN role ENUM('admin','viewer','decorator') NOT NULL");
+ })().catch(error=>{staffMobileReady=null;throw error;});return staffMobileReady;
+}

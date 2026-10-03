@@ -120,3 +120,12 @@ export async function pageHitSummary() {
   const today = await env.DB.prepare("SELECT COALESCE(SUM(hits), 0) AS hits FROM page_hits WHERE visit_date = ?").bind(indiaDate()).first<{ hits: number }>();
   return { today: today?.hits ?? 0, total: total?.hits ?? 0, days: days.results ?? [] };
 }
+
+let staffMobileReady: Promise<void> | null = null;
+export function ensureStaffMobileColumn() {
+ if (!staffMobileReady) staffMobileReady = (async () => {
+  const info = await env.DB.prepare("PRAGMA table_info(staff_users)").all<{name:string}>();
+  if (!(info.results ?? []).some(column => column.name === "mobile")) await env.DB.prepare("ALTER TABLE staff_users ADD COLUMN mobile TEXT NOT NULL DEFAULT ''").run();
+ })().catch(error => { staffMobileReady = null; throw error; });
+ return staffMobileReady;
+}

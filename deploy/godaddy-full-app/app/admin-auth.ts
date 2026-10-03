@@ -1,6 +1,6 @@
-export type StaffRole = "admin" | "viewer";
+export type StaffRole = "admin" | "viewer" | "decorator";
 import { eq } from "drizzle-orm";
-import { getDb } from "../db";
+import { ensureStaffMobileColumn, getDb } from "../db";
 import { staffUsers } from "../db/schema";
 import { hashPassword, safeEqual } from "./password-auth";
 
@@ -43,7 +43,7 @@ export async function getStaffSession(request: Request): Promise<StaffSession | 
   try {
     const decoded = payload.replace(/-/g, "+").replace(/_/g, "/");
     const session = JSON.parse(atob(decoded)) as StaffSession;
-    if (session.expiresAt < Date.now() || !["admin", "viewer"].includes(session.role)) return null;
+    if (session.expiresAt < Date.now() || !["admin", "viewer", "decorator"].includes(session.role)) return null;
     return session;
   } catch { return null; }
 }
@@ -51,6 +51,7 @@ export async function getStaffSession(request: Request): Promise<StaffSession | 
 export async function validateCredentials(username: string, password: string): Promise<StaffSession | null> {
   if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) return { username, role: "admin", expiresAt: 0 };
   if (username === process.env.VIEWER_USERNAME && password === process.env.VIEWER_PASSWORD) return { username, role: "viewer", expiresAt: 0 };
+  await ensureStaffMobileColumn();
   const [user] = await getDb().select().from(staffUsers).where(eq(staffUsers.username, username)).limit(1);
   if (user && safeEqual(await hashPassword(password, user.passwordSalt), user.passwordHash)) return { username: user.username, role: user.role, expiresAt: 0 };
   return null;

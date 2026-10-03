@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, cpSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, cpSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
@@ -33,11 +33,15 @@ function syncProjectFiles() {
   mkdirSync(deployRoot, { recursive: true });
   replace(join(root, "components"), join(deployRoot, "components"));
   replace(join(root, "lib"), join(deployRoot, "lib"));
-  replace(join(root, "public"), join(deployRoot, "public"));
+  // The offline catalog uses D1; production uses its MySQL adapter.
+  writeFileSync(join(deployRoot, "lib", "decoration-store.ts"), 'export { decorationStore } from "../db/decoration-store";\n');
+  cpSync(join(root, "public"), join(deployRoot, "public"), { recursive: true });
 
   // Keep GoDaddy's MySQL API routes, but refresh all UI and page code.
   for (const name of [
     "admin",
+    "decorations",
+    "cctv",
     "catering",
     "privacy",
     "globals.css",

@@ -1,3 +1,7 @@
+import { exportFullDatabase, restoreFullDatabase } from "../../../../db/full-backup";
+import { ensureStaffMobileColumn } from "../../../../db";
+import { decorationStore } from "../../../../db/decoration-store";
+import { validSnapshot, type DatabaseSnapshot } from "../../../../lib/full-database-backup";
 import { asc, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { additionalIncome, bookings, expenses, orderAdditions, staffUsers } from "../../../../db/schema";
@@ -5,7 +9,8 @@ import { getStaffSession } from "../../../admin-auth";
 
 type BackupData = {
   format: "aishwarya-party-hall-backup";
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
+  database?:DatabaseSnapshot;
   exportedAt?: string;
   data: {
     bookings: Array<typeof bookings.$inferInsert>;
@@ -18,6 +23,7 @@ type BackupData = {
     greetingDrafts?: GreetingDraft[];
     greetingSettings?: GreetingSetting[];
     greetingSends?: GreetingSend[];
+    decorationCatalog?:unknown;
   };
 };
 
@@ -37,7 +43,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function validateBackup(value: unknown): value is BackupData {
-  if (!isRecord(value) || value.format !== "aishwarya-party-hall-backup" || ![1, 2, 3, 4].includes(Number(value.version)) || !isRecord(value.data)) return false;
+  if (!isRecord(value) || value.format !== "aishwarya-party-hall-backup" || ![1, 2, 3, 4, 5].includes(Number(value.version)) || !isRecord(value.data)) return false;
+  if(value.version===5&&!validSnapshot(value.database))return false;
   const bookingRows = value.data.bookings;
   const expenseRows = value.data.expenses;
   const incomeRows = value.data.additionalIncome;
@@ -54,7 +61,7 @@ function validateBackup(value: unknown): value is BackupData {
   return bookingRows.every((item) => isRecord(item) && integer(item, "id") && ["Padi", "Korattur"].includes(String(item.location)) && ["confirmed", "cancelled"].includes(String(item.status)) && ["bookingDate", "startTime", "endTime", "billNo", "functionName", "customerName", "mobile", "createdAt"].every((key) => text(item, key)) && integer(item, "amount") && integer(item, "advanceReceived"))
     && expenseRows.every((item) => isRecord(item) && integer(item, "id") && ["Padi", "Korattur", "General"].includes(String(item.location)) && ["expenseDate", "category", "description", "createdAt"].every((key) => text(item, key)) && integer(item, "amount"))
     && incomeRows.every((item) => isRecord(item) && integer(item, "id") && ["Padi", "Korattur", "General"].includes(String(item.location)) && ["incomeDate", "category", "description", "createdAt"].every((key) => text(item, key)) && integer(item, "amount"))
-    && userRows.every((item) => isRecord(item) && integer(item, "id") && ["admin", "viewer"].includes(String(item.role)) && ["username", "passwordHash", "passwordSalt", "createdAt"].every((key) => text(item, key)))
+    && userRows.every((item) => isRecord(item) && integer(item, "id") && ["admin", "viewer", "decorator"].includes(String(item.role)) && ["username", "passwordHash", "passwordSalt", "createdAt"].every((key) => text(item, key)))
     && (!Array.isArray(additionRows) || additionRows.every((item) => isRecord(item) && integer(item, "id") && text(item, "orderId") && text(item, "itemName") && text(item, "functionDate") && text(item, "functionTime") && integer(item, "originalQty") && integer(item, "rate")))
     && (!Array.isArray(menuRows) || menuRows.every((item) => isRecord(item) && ["id", "name", "category", "type", "rate", "photoPath"].every((key) => text(item, key))));
 }
@@ -71,6 +78,7 @@ async function ensureExtraBackupTables() {
 
 export async function GET(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
+  await ensureStaffMobileColumn();
   const db = getDb();
   await db.execute(sql`CREATE TABLE IF NOT EXISTS catering_menu_items (id VARCHAR(120) PRIMARY KEY, name VARCHAR(255) NOT NULL, category VARCHAR(80) NOT NULL, meal JSON NOT NULL, type VARCHAR(20) NOT NULL, rate VARCHAR(50) NOT NULL DEFAULT '', sides JSON NOT NULL, photo_path VARCHAR(500) NOT NULL DEFAULT '')`);
   await ensureExtraBackupTables();
@@ -88,9 +96,10 @@ export async function GET(request: Request) {
   ]);
   const backup: BackupData = {
     format: "aishwarya-party-hall-backup",
-    version: 4,
+    version: 5,
+    database: await exportFullDatabase(),
     exportedAt: new Date().toISOString(),
-    data: { bookings: bookingRows, expenses: expenseRows, additionalIncome: incomeRows, staffUsers: userRows, orderAdditions: additionRows, cateringMenuItems: (menuResult[0] ?? []) as unknown as CateringMenuItem[], cctvCameras: (cameraResult[0] ?? []) as unknown as CctvCamera[], greetingDrafts: (draftResult[0] ?? []) as unknown as GreetingDraft[], greetingSettings: (settingsResult[0] ?? []) as unknown as GreetingSetting[], greetingSends: (sendsResult[0] ?? []) as unknown as GreetingSend[] },
+    data: { decorationCatalog:(await (await decorationStore()).read()).data, bookings: bookingRows, expenses: expenseRows, additionalIncome: incomeRows, staffUsers: userRows, orderAdditions: additionRows, cateringMenuItems: (menuResult[0] ?? []) as unknown as CateringMenuItem[], cctvCameras: (cameraResult[0] ?? []) as unknown as CctvCamera[], greetingDrafts: (draftResult[0] ?? []) as unknown as GreetingDraft[], greetingSettings: (settingsResult[0] ?? []) as unknown as GreetingSetting[], greetingSends: (sendsResult[0] ?? []) as unknown as GreetingSend[] },
   };
   const date = new Date().toISOString().slice(0, 10);
   return new Response(JSON.stringify(backup, null, 2), {
@@ -111,6 +120,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "The selected file is not valid JSON" }, { status: 400 });
   }
   if (!validateBackup(payload)) return Response.json({ error: "This is not a valid Aishwarya Party Hall database backup" }, { status: 400 });
+  if(payload.version===5&&payload.database){
+   try{await restoreFullDatabase(payload.database);const count=(name:string)=>payload.database!.tables.find(table=>table.name===name)?.rows.length??0;
+   return Response.json({success:true,fullDatabase:true,counts:{bookings:count('bookings'),expenses:count('expenses'),additionalIncome:count('additional_income'),staffUsers:count('staff_users'),orderAdditions:count('order_additions_v5'),tables:payload.database.tables.length}});
+   }catch(error){return Response.json({error:error instanceof Error?error.message:'Full restore failed. No records were replaced.'},{status:400});}
+  }
   const additionRows = (payload.data.orderAdditions || []).map((row) => {
     let advanceEntries: unknown = row.advanceEntries ?? [];
     if (typeof advanceEntries === "string") {

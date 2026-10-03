@@ -10,7 +10,7 @@ import { AdminReminders } from "./admin-reminders";
 import { CustomerBillPreview } from "./customer-bill-preview";
 
 type Booking = { id: number; location: string; bookingDate: string; startTime: string; endTime: string; billNo: string; functionName: string; customerName: string; mobile: string; mobile2?: string; address?: string; createdAt?: string; amount?: number; advanceReceived?: number; cctvPassword?: string; status: string };
-type Staff = { username: string; role: "admin" | "viewer" };
+type Staff = { username: string; role: "admin" | "viewer" | "decorator" };
 const functionNames = ["Birthday Party", "Engagement", "Baby Shower", "Naming Ceremony", "Ear Boring", "Puberty", "Betrothal", "Wedding Reception", "Get Together", "Seminar / Training", "Corporate Event", "Small Exhibition", "Other Function"];
 
 async function readJson(response: Response): Promise<Record<string, unknown>> {
@@ -171,19 +171,20 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
   const koratturValue = koratturMonth.reduce((sum, item) => sum + (item.amount ?? 0), 0);
 
   if (view === "dashboard") return <main className="adminPage adminDashboardPage">
-    <header className="adminHeader dashboardHeader"><div><p className="kicker">Private administration</p><h1>Aishwarya Administration</h1><p className="staffRole">Signed in as {staff.username} · {staff.role === "admin" ? "Administrator" : "Read-only viewer"}</p></div></header>
+    <header className="adminHeader dashboardHeader"><div><p className="kicker">Private administration</p><h1>Aishwarya Administration</h1><p className="staffRole">Signed in as {staff.username} · {staff.role === "admin" ? "Administrator" : staff.role === "decorator" ? "Decorator · Viewer access" : "Read-only viewer"}</p></div></header>
     <section className="adminDashboardGroups">
-      {staff.role === "admin" && <AdminReminders />}
+      {staff.role === "decorator" && <article className="adminDashboardGroup"><p className="kicker">Stage Decorations</p><h2>My Decorations</h2><div className="dashboardLinkGrid"><a href="/admin/decorations"><b>Upload &amp; Manage My Designs</b><span>Submit decoration designs for administrator approval</span></a></div></article>}
+      {staff.role === "admin" && <><AdminReminders /><a className="maroonButton" href="/admin/decorations">Stage Decorations &amp; Approvals →</a></>}
       <article className="adminDashboardGroup partyHallDashboard"><p className="kicker">Aishwarya Party Hall</p><h2>Booking Administration</h2><div className="dashboardLinkGrid">{staff.role === "admin" && <a className="primaryDashboardLink" href="/admin/bookings/new"><b>Hall Booking</b><span>Create a new confirmed hall booking</span></a>}<a href="/admin/bookings"><b>Booking Manager</b><span>View, edit and manage confirmed bookings</span></a>{staff.role === "admin" && <a href="/admin/financial"><b>New Expenses &amp; Revenue</b><span>Add booking expenses and additional revenue</span></a>}{staff.role === "admin" && <a href="/admin/reports/bookings"><b>Booking Expenses &amp; Revenue</b><span>Booking expenses and revenue</span></a>}{staff.role === "admin" && <a href="/admin/financial/profit-loss"><b>Profit &amp; Loss Summary</b><span>Monthly and yearly profit or loss</span></a>}</div></article>
-      <article className="adminDashboardGroup operationsDashboard">
+      {staff.role === "admin" && <article className="adminDashboardGroup operationsDashboard">
         <p className="kicker">Administration</p><h2>Customer &amp; Hall Operations</h2>
         <div className="dashboardLinkGrid">
           {staff.role === "admin" && <a href="/admin/greetings"><b>Customer Greetings &amp; Advertisements</b><span>Prepare, approve and track messages for past and present customers</span></a>}
           {staff.role === "admin" && <a href="/admin/staff-salary"><b>Staff Salary</b><span>Employees, leave, advances and salary payments</span></a>}
           {staff.role === "admin" && <a href="/admin/hall-rent"><b>Hall Rent</b><span>Hall agreements, rent payments and renewals</span></a>}
-          <a href="/admin/cctv"><b>Live CCTV</b><span>Staff-only camera dashboard</span></a>
+          {staff.role === "admin" && <a href="/admin/cctv"><b>Live CCTV</b><span>Administrator camera dashboard</span></a>}
         </div>
-      </article>
+      </article>}
       {staff.role === "admin" && <><article className="adminDashboardGroup ssFoodsDashboard"><p className="kicker">SS Foods</p><h2>Catering Administration</h2><div className="dashboardLinkGrid"><a href="/admin/order-additions"><b>New Order</b><span>Create a new catering order</span></a><a className="primaryDashboardLink" href="/admin/catering-menu"><b>SS FOODS Menu Manager</b><span>Manage Tamil Nadu dishes, rates and side dishes</span></a><a href="/admin/catering-expenses"><b>Expenses</b><span>Record catering expenses</span></a><a href="/admin/catering-expenses/profit-loss"><b>Profit / Loss</b><span>Monthly and yearly catering results</span></a></div></article><article className="adminDashboardGroup businessDashboard"><p className="kicker">Overall Business</p><h2>Combined Reporting</h2><div className="dashboardLinkGrid"><a href="/admin/overall-financial"><b>Combined Financial Report</b><span>Aishwarya Party Hall + SS Foods</span></a></div></article><article className="adminDashboardGroup systemDashboard"><p className="kicker">Administration</p><h2>System Tools</h2><div className="dashboardLinkGrid"><a href="/admin/page-hits"><b>Daily Page Hits</b><span>View daily public website page loads</span></a><a href="/admin/users"><b>Manage Users</b><span>Administrators and viewers</span></a><a href="/admin/backup"><b>Database Backup</b><span>Import, export and online sync</span></a></div></article></>}
     </section>
   </main>;
