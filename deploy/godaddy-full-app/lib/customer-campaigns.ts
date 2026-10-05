@@ -54,9 +54,9 @@ export function campaignContent(draft: Pick<CampaignDraft, "title" | "message" |
   return JSON.stringify([draft.title.trim(), draft.message, draft.image, draft.kind, [...new Set(draft.recipients)].sort()]);
 }
 
-export function makeVcards(customers: Pick<CampaignCustomer, "customerName" | "number">[]) {
+export function makeVcards(customers: Pick<CampaignCustomer, "customerName" | "number" | "location">[]) {
   const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,");
-  return customers.map(c => `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${escape(`APH - ${c.customerName}`)}\r\nN:;${escape(`APH - ${c.customerName}`)};;;\r\nTEL;TYPE=CELL:+${c.number}\r\nEND:VCARD\r\n`).join("");
+  return customers.map(c => `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${escape(c.customerName)}\r\nN:;${escape(c.customerName)};;;\r\nORG:${escape(`APH - ${c.location}`)}\r\nTEL;TYPE=CELL:+${c.number}\r\nEND:VCARD\r\n`).join("");
 }
 
 export function whatsappLink(number: string, message: string) {

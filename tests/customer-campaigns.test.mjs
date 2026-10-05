@@ -22,10 +22,14 @@ test('full-history audience deduplicates phones and retains matching past and fu
 });
 
 test('contact downloads escape line breaks and WhatsApp links keep Tamil and symbols intact', () => {
-  const card = helpers.makeVcards([{ customerName: 'Tamil;Name\nTEL:123', number: '919876543210' }]);
+  const card = helpers.makeVcards([{ customerName: 'Tamil;Name\nTEL:123', number: '919876543210', location: 'Padi' }]);
   assert.equal(card.match(/BEGIN:VCARD/g).length, 1);
   assert.equal(card.match(/\r\nTEL;/g).length, 1);
   assert.ok(card.includes('Tamil\\;Name\\nTEL:123'));
+  const batchCard = helpers.makeVcards([{ customerName: 'B1 - Name - 15SEP2026', number: '919876543210', location: 'Korattur' }]);
+  assert.ok(batchCard.includes('\r\nFN:B1 - Name - 15SEP2026\r\n'));
+  assert.ok(batchCard.includes('\r\nN:;B1 - Name - 15SEP2026;;;\r\n'));
+  assert.ok(batchCard.includes('\r\nORG:APH - Korattur\r\n'));
   const message = 'வணக்கம் 🙏 & offer + image';
   const link = new URL(helpers.whatsappLink('919876543210', message));
   assert.equal(link.searchParams.get('text'), message);
