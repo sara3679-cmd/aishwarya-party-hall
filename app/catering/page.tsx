@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import "./catering.css";
+import CateringServices from "../../components/CateringServices";
+import "./services.css";
 import "./menu-packages.css";
 
 const PHONE = "+919884806618";
@@ -12,13 +14,6 @@ const menuIdeas = [
   ["Birthday Biryani Menu", "Welcome drink, chicken biryani, brinjal pachadi, onion raita and ice cream."],
   ["Veg Biryani Celebration", "Vegetable biryani with raita, gravy, starter, sweet and dessert."],
   ["Institutional Meal Service", "Planned breakfast, lunch, snacks and dinner menus for organisations."],
-];
-
-const samplePackages = [
-  { tag: "VEGETARIAN", title: "South Indian Breakfast", price: "₹___ / person", dishes: ["Kesari", "Idli & pongal", "Medhu vadai", "Sambar & two chutneys", "Poori & potato masala", "Coffee"] },
-  { tag: "TRADITIONAL", title: "Vegetarian Lunch", price: "₹___ / person", dishes: ["Sweet & payasam", "White rice", "Kadamba sambar", "Vatha kuzhambu & rasam", "Poriyal & potato masala", "Vadai, appalam & buttermilk"] },
-  { tag: "NON-VEGETARIAN", title: "Chicken Biryani Menu", price: "₹___ / person", dishes: ["Welcome drink", "Bread halwa", "Chicken biryani", "Chicken 65", "Onion raita & brinjal curry", "Ice cream"] },
-  { tag: "PREMIUM", title: "Mutton Biryani Menu", price: "Custom quotation", dishes: ["Welcome drink", "Sweet", "Mutton biryani", "Chicken 65", "Veg biryani & Gobi 65", "Raita, brinjal curry & dessert"] },
 ];
 
 export default function CateringPage() {
@@ -34,7 +29,7 @@ export default function CateringPage() {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    setSummary(`Enquiry prepared — copy and send to SS FOODS\n\nService: ${data.get("service")}\nDate: ${data.get("date")}\nFunction: ${data.get("function")}\nMeal: ${data.get("meal")}\nPreference: ${data.get("preference")}\nGuests: ${data.get("guests")}\nVenue: ${data.get("venue")}\nRequirements: ${data.get("requirements") || "Not specified"}\nName: ${data.get("name")}\nMobile: ${data.get("mobile")}\n\nThis offline form has not sent your information.`);
+    setSummary(`Enquiry prepared — copy and send to SS FOODS\n\nService: ${data.get("service")}\nDate: ${data.get("date")}\nFunction: ${data.get("function")}\nMeal: ${data.get("meal")}\nMenu type: ${data.get("preference")}\nGuests: ${data.get("guests")}\nVenue: ${data.get("venue")}\nRequirements: ${data.get("requirements") || "Not specified"}\nName: ${data.get("name")}\nMobile: ${data.get("mobile")}\n\nThis offline form has not sent your information.`);
     setTimeout(() => document.getElementById("form-result")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
   };
 
@@ -57,7 +52,7 @@ export default function CateringPage() {
 
     <section className="ssSection ssWarm" id="functions"><div className="ssSectionHead"><div><p className="ssKicker">Made for your moment</p><h2>Functions we cater</h2></div><p>From the first welcome drink to the last sweet, we shape service around the rhythm of your day.</p></div><div className="ssOccasions">{[["Weddings & Receptions","Breakfast, muhurtham lunch and reception dinners."],["Betrothals","Traditional menus for joyful family beginnings."],["Birthdays","Friendly favourites for children, families and friends."],["Family Ceremonies","Baby showers, naming, ear-piercing and puberty functions."],["Corporate Catering","Organised breakfast, lunch, snacks and dinner for teams."],["Institutional Catering","Planned canteen and meal service for educational institutions."]].map(([title,copy],i)=><article key={title}><span>0{i+1}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
 
-    <section className="ssSection" id="packages"><div className="ssSectionHead"><div><p className="ssKicker">Based on genuine SS FOODS orders</p><h2>Sample catering menus</h2></div><p>These are practical starting points from recent menu patterns. Items, quantities and service are customized for every event.</p></div><div className="ssPackages">{samplePackages.map((pkg,i)=><article className={i===2?"featured":""} key={pkg.title}><small>{pkg.tag}</small><h3>{pkg.title}</h3><p>Starting from <b>{pkg.price}</b></p><ul>{pkg.dishes.map(dish=><li key={dish}>{dish}</li>)}</ul><a href="#enquiry" onClick={()=>setRequirements(`Interested in the ${pkg.title} sample menu. `)}>Customize this menu →</a></article>)}</div><p className="ssNote">Prices remain intentionally blank because historic order rates are not current quotations. Contact SS FOODS for today’s rate based on guest count and requirements.</p></section>
+    <CateringServices />
 
     <section className="fullMenuLinks" aria-label="Explore full SS Foods menus"><a className="customMenuLink" href="/catering/custom-menu">Build your menu <span>→</span></a><div><p className="ssKicker">Explore every option</p><h2>Separate menus for every meal.</h2></div><nav><a href="/catering/breakfast"><span>01</span><b>Breakfast</b><small>3 Veg + 3 Non-Veg menus</small><i>→</i></a><a href="/catering/lunch"><span>02</span><b>Lunch</b><small>3 Veg + 3 Non-Veg menus</small><i>→</i></a><a href="/catering/dinner"><span>03</span><b>Dinner</b><small>3 Veg + 3 Non-Veg menus</small><i>→</i></a></nav></section>
 
@@ -78,11 +73,11 @@ export default function CateringPage() {
             <label>Function date<input type="date" name="date" required/></label>
             <label>Function type<select name="function" required defaultValue=""><option value="" disabled>Select function</option><option>Wedding</option><option>Reception</option><option>Betrothal</option><option>Birthday</option><option>Baby Shower</option><option>Naming Ceremony</option><option>Ear-piercing Ceremony</option><option>Puberty Function</option><option>Housewarming</option><option>Corporate Event</option><option>Institutional Catering</option><option>Family Function</option><option>Other</option></select></label>
             <label>Meal<select name="meal" required defaultValue=""><option value="" disabled>Select meal</option><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snacks &amp; refreshments</option><option>Multiple meals</option></select></label>
-            <label>Food preference<select name="preference" required defaultValue=""><option value="" disabled>Select preference</option><option>Vegetarian</option><option>Chicken menu</option><option>Mutton menu</option><option>Vegetarian &amp; non-vegetarian</option></select></label>
+            <label>Menu type<select name="preference" required defaultValue=""><option value="" disabled>Select menu type</option><option>Vegetarian</option><option>Chicken menu</option><option>Mutton menu</option><option>Vegetarian &amp; non-vegetarian</option></select></label>
             <label>Guest count<input type="number" name="guests" min="1" placeholder="Approximate number" required/></label>
             <label>Venue<input type="text" name="venue" placeholder="Area / venue name" required/></label>
           </div>
-          <label>Dishes or special requirements<textarea name="requirements" rows={5} value={requirements} onChange={e=>setRequirements(e.target.value)} placeholder="Preferred dishes, dietary needs or serving style..."/></label>
+          <label>Dishes or special requirements<textarea name="requirements" rows={5} value={requirements} onChange={e=>setRequirements(e.target.value)} placeholder="Menu dishes, extras or serving style..."/></label>
         </fieldset>
         <fieldset><legend>How can we reach you?</legend><div className="ssFields"><label>Your name<input type="text" name="name" autoComplete="name" required/></label><label>Mobile number<input type="tel" name="mobile" autoComplete="tel" placeholder="10-digit mobile number" required/></label></div></fieldset>
         <button className="ssSubmit" type="submit">Prepare my enquiry <span>→</span></button>

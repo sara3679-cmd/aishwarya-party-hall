@@ -37,9 +37,9 @@ export function BookingReportPreview({ bookings, includeAmounts, onClose }: { bo
     setMessage("Report downloaded. Attach the image in the WhatsApp chat, then press Send.");
   }
 
-  return <dialog ref={dialog} className="customerBillDialog" onCancel={onClose} aria-labelledby="booking-report-title">
-    <div className="customerBillToolbar"><h2 id="booking-report-title">{includeAmounts ? "WhatsApp + Amount" : "WhatsApp"} · Booking report</h2><button onClick={onClose}>Close</button></div>
-    <p>Preview the report, then download it and open WhatsApp. Attach the downloaded image and press Send.</p>
+  return <dialog ref={dialog} className="customerBillDialog bookingReportDialog" onCancel={onClose} aria-labelledby="booking-report-title">
+    <div className="customerBillToolbar"><h2 id="booking-report-title">{includeAmounts ? "WhatsApp + Amount" : "WhatsApp"} · Today &amp; upcoming bookings</h2><button onClick={onClose}>Close</button></div>
+    <p>Only today&apos;s and future bookings are included, ordered by event date and time. Preview the report, then download it and open WhatsApp.</p>
     <div className="customerBillToolbar">
       <button disabled={!images.length} onClick={send}>Download &amp; Open WhatsApp</button>
       {images.map(({ file, url }, index) => <a key={url} href={url} download={file.name}>Download report{images.length > 1 ? ` ${index + 1}` : ""} only</a>)}

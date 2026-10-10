@@ -38,7 +38,7 @@ export default function CateringMenuPage({ meal, intro, image, imageAlt, veg, no
 
     <section className="menuTerms">
       <div><p>Pricing notes</p><h2>Clear starting prices,<br/>personal final quotations.</h2></div>
-      <ul><li>Displayed prices are starting rates for 100 or more guests.</li><li>Menus for 50–99 guests may cost ₹20–₹40 more per person.</li><li>Orders below 50 guests receive a custom quotation.</li><li>Outdoor transport, live counters and special equipment are quoted separately.</li><li>Premium sweets, fish and special mutton selections may change the final price.</li></ul>
+      <ul><li>Displayed prices are sample estimates for 100 or more guests, pending SS FOODS approval.</li><li>Menus for 50–99 guests may cost ₹20–₹40 more per person.</li><li>Orders below 50 guests receive a custom quotation.</li><li>Outdoor transport, live counters and special equipment are quoted separately.</li><li>Premium sweets, fish and special mutton selections may change the final price.</li></ul>
     </section>
 
     <section className="menuCta"><p>Like a menu?</p><h2>We’ll tailor it to your celebration.</h2><div><a href="/catering#enquiry">Build your enquiry →</a><a href="tel:+919884806618">Call +91 98848 06618</a></div></section>
@@ -47,5 +47,5 @@ export default function CateringMenuPage({ meal, intro, image, imageAlt, veg, no
 }
 
 function MenuGroup({ title, kicker, options, dark=false }: { title:string; kicker:string; options:MenuOption[]; dark?:boolean }) {
-  return <section className={`menuGroup ${dark?"dark":""}`}><div className="menuGroupHead"><div><p>{kicker}</p><h2>{title}</h2></div><span>Option 1 is concise, Option 2 adds celebration favourites, and Option 3 delivers the fullest experience.</span></div><div className="menuOptionGrid">{options.map((option,index)=><article className={option.featured?"featured":""} key={option.name}><div className="menuOptionTop"><span>OPTION 0{index+1}</span>{option.featured&&<b>MOST POPULAR</b>}</div><h3>{option.name}</h3><p>{option.subtitle}</p><div className="menuPrice"><small>STARTING FROM</small><strong>₹{option.price}</strong><span>/ person</span></div><ul>{option.items.map(item=><li key={item}>{item}</li>)}</ul><a href="/catering#enquiry">Customize this menu →</a></article>)}</div></section>;
+  return <section className={`menuGroup ${dark?"dark":""}`}><div className="menuGroupHead"><div><p>{kicker}</p><h2>{title}</h2></div><span>Option 1 is concise, Option 2 adds celebration favourites, and Option 3 delivers the fullest experience.</span></div><div className="menuOptionGrid">{options.map((option,index)=><article className={option.featured?"featured":""} key={option.name}><div className="menuOptionTop"><span>OPTION 0{index+1}</span>{option.featured&&<b>MOST POPULAR</b>}</div><h3>{option.name}</h3><p>{option.subtitle}</p><div className="menuPrice"><small>SAMPLE PRICE</small><strong>₹{option.price}</strong><span>/ person</span></div><ul>{option.items.map(item=><li key={item}>{item}</li>)}</ul><a href="/catering/custom-menu">Customize this menu →</a></article>)}</div></section>;
 }

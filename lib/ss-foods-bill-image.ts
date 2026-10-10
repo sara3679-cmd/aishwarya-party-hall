@@ -55,21 +55,12 @@ function fit(context: CanvasRenderingContext2D, value: string, maxWidth: number)
   return `${result}…`;
 }
 
-async function loadLogo() {
+async function loadBillAsset(src: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
-    image.src = "/images/brand/ssfoods-logo-official.jpg";
-  });
-}
-
-async function loadSignature() {
-  return new Promise<HTMLImageElement | null>((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => resolve(null);
-    image.src = "/images/brand/saravanan-signature.jpg";
+    image.src = src;
   });
 }
 
@@ -83,16 +74,31 @@ export async function professionalBillImage(items: SsFoodsBillItem[]) {
   const advance = Number(first.advanceTotal || advances.reduce((sum, row) => sum + row.amount, 0));
   const balance = Math.max(0, total - advance);
 
+  const [logo, signature, referenceHeader] = await Promise.all([
+    loadBillAsset("/images/brand/ssfoods-logo-official.jpg"),
+    loadBillAsset("/images/brand/saravanan-signature.jpg"),
+    loadBillAsset("/images/brand/ss-foods-invoice-header.png"),
+  ]);
   const width = 1240;
   const itemRowHeight = 54;
   const advanceRowHeight = 48;
-  const height = Math.max(1900, 1390 + items.length * itemRowHeight + Math.max(advances.length, 1) * advanceRowHeight);
+  const itemRows = items.length + (discount > 0 ? 1 : 0);
+  const advanceRows = advances.length || (advance > 0 ? 1 : 0);
+  const summaryTop = 770 + 49 + itemRows * itemRowHeight + 49
+    + (advanceRows > 0 ? 145 + advanceRows * advanceRowHeight : 0) + 16;
+  const footerHeight = 268;
+  const footerTop = summaryTop + 147 + 24;
+  const height = Math.ceil(footerTop + footerHeight);
+  const exportScale = 2;
   const canvas = document.createElement("canvas");
-  canvas.width = width; canvas.height = height;
+  canvas.width = width * exportScale; canvas.height = height * exportScale;
   const c = canvas.getContext("2d");
   if (!c) throw new Error("Unable to create bill image");
+  c.scale(exportScale, exportScale);
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = "high";
 
-  const maroon = "#850b10", deep = "#5c070a", gold = "#d78a15", cream = "#fffaf1", ink = "#2d2421", muted = "#766660", line = "#ead8bf", white = "#ffffff", pale = "#fbf1df";
+  const maroon = "#850b10", deep = "#5c070a", gold = "#d78a15", ink = "#2d2421", muted = "#766660", line = "#ead8bf", white = "#ffffff";
   const text = (value: string, x: number, y: number, size = 20, color = ink, align: CanvasTextAlign = "left", weight = "400", family = "Arial") => {
     c.fillStyle = color; c.textAlign = align; c.font = `${weight} ${size}px ${family}`; c.fillText(value, x, y);
   };
@@ -103,11 +109,6 @@ export async function professionalBillImage(items: SsFoodsBillItem[]) {
     c.beginPath(); c.roundRect(x, y, w, h, radius); c.fillStyle = fill; c.fill();
     if (stroke) { c.strokeStyle = stroke; c.lineWidth = 1.5; c.stroke(); }
   };
-  const field = (label: string, value: string, x: number, y: number, maxWidth: number) => {
-    text(label.toUpperCase(), x, y, 12, muted, "left", "700");
-    c.font = "700 19px Arial"; text(fit(c, value || "—", maxWidth), x, y + 27, 19, ink, "left", "700");
-  };
-
   c.fillStyle = "#fffefa"; c.fillRect(0, 0, width, height);
 
   const cornerRibbon = (bottom = false) => {
@@ -125,114 +126,162 @@ export async function professionalBillImage(items: SsFoodsBillItem[]) {
   };
   cornerRibbon();
   cornerRibbon(true);
+  c.strokeStyle = gold; c.lineWidth = 3; c.strokeRect(3, 3, width - 6, height - 6);
+  const flourish = (x: number, y: number, scale = 1) => {
+    c.save(); c.translate(x, y); c.scale(scale, scale);
+    rule(-70, 0, 70, 0, gold, 2);
+    for (const side of [-1, 1]) {
+      for (let leaf = 0; leaf < 3; leaf++) {
+        c.save(); c.translate(side * (24 + leaf * 17), 0); c.rotate(side * -0.5);
+        c.fillStyle = gold; c.beginPath(); c.ellipse(0, -8, 5, 13, 0, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.ellipse(0, 8, 5, 13, 0, 0, Math.PI * 2); c.fill(); c.restore();
+      }
+    }
+    c.restore();
+  };
+  flourish(220, 302, 0.8); flourish(1020, 302, 0.8);
+  flourish(390, height - 90, 0.7); flourish(850, height - 90, 0.7);
+  c.save(); c.translate(width - 35, 34); c.strokeStyle = gold; c.lineWidth = 3;
+  for (let index = 0; index < 5; index++) {
+    c.beginPath(); c.arc(-index * 19, index * 19, 13 + index * 4, 0, Math.PI * 1.7); c.stroke();
+  }
+  c.restore();
 
-  const [logo, signature] = await Promise.all([loadLogo(), loadSignature()]);
   if (logo) {
     const ratio = Math.min(104 / logo.width, 104 / logo.height);
     c.drawImage(logo, 452 - logo.width * ratio / 2, 38, logo.width * ratio, logo.height * ratio);
   }
   text("SS foods", 635, 103, 47, maroon, "center", "700", "Georgia");
-  text("SS FOODS", width / 2, 206, 91, maroon, "center", "700", "Georgia");
-  text("—  CATERING SERVICE  —", width / 2, 260, 31, gold, "center", "700", "Georgia");
-  text("Good Food. Good Mood. Great Memories.", width / 2, 301, 21, ink, "center", "400", "Georgia");
-  rule(195, 329, 1045, 329, gold, 2);
-  text("●  5A Balu Nagar, Mogappair East, Chennai 600037", 70, 365, 16, ink, "left", "600");
-  text("☎  98848 06618", width / 2, 365, 18, maroon, "center", "700");
-  text("INVOICE", 1170, 365, 35, maroon, "right", "700", "Georgia");
+  text("SS FOODS", width / 2, 260, 137, maroon, "center", "700", "Georgia");
+  text("—  CATERING SERVICE  —", width / 2, 316, 45, gold, "center", "700", "Georgia");
+  text("Good Food. Good Mood. Great Memories.", width / 2, 361, 31, ink, "center", "400", "Georgia");
+  rule(195, 386, 1125, 386, gold, 2);
+  text("●", 62, 432, 39, maroon);
+  text("5A Balu Nagar, Mogappair East,", 124, 424, 24);
+  text("Chennai 600037", 124, 458, 24);
+  rule(520, 410, 520, 462, gold);
+  text("☎", 565, 444, 39, maroon);
+  text("9884806618", 628, 444, 25);
+  rule(835, 410, 835, 462, gold);
+  text("INVOICE", 1180, 451, 61, maroon, "right", "700", "Georgia");
 
-  const cardY = 397, cardH = 205, gap = 0, margin = 50, cardW = (width - margin * 2) / 3;
+  // Use the supplied artwork directly so the brand header matches exactly.
+  if (referenceHeader) {
+    c.fillStyle = white; c.fillRect(0, 0, width, 490);
+    c.drawImage(referenceHeader, 0, 0, width, width * referenceHeader.height / referenceHeader.width);
+  }
+
+  const margin = 46, tableW = width - margin * 2;
+  const cardY = 502, cardHeight = 252, cardWidth = tableW / 3;
   const cards = [
-    { title: "INVOICE", fields: [["Bill Number", first.orderId], ["Bill Date", dateLabel(first.billDate)], ["Venue", first.venue || "—"]] },
-    { title: "CUSTOMER", fields: [["Customer Name", first.customerName || "—"], ["Mobile Number", first.mobileNo || "—"], ["Address", first.customerAddress || "—"]] },
-    { title: "EVENT", fields: [["Function", first.functionName || "—"], ["Function Date", dateLabel(first.functionDate)], ["Session / Time", `${first.mealSession || "—"} • ${timeLabel(first.functionTime)}`]] },
+    { title: "INVOICE", fields: [["BILL NUMBER", first.orderId], ["BILL DATE", dateLabel(first.billDate)], ["VENUE", first.venue]] },
+    { title: "CUSTOMER", fields: [["CUSTOMER NAME", first.customerName], ["MOBILE NUMBER", first.mobileNo], ["ADDRESS", first.customerAddress]] },
+    { title: "EVENT", fields: [["FUNCTION", first.functionName], ["FUNCTION DATE", dateLabel(first.functionDate)], ["SESSION / TIME", [first.mealSession, timeLabel(first.functionTime)].filter(Boolean).join(" • ")]] },
   ];
+  c.fillStyle = white; c.fillRect(margin, cardY, tableW, cardHeight);
+  c.strokeStyle = maroon; c.lineWidth = 1.5; c.strokeRect(margin, cardY, tableW, cardHeight);
   cards.forEach((card, index) => {
-    const x = margin + index * (cardW + gap);
-    c.fillStyle = white; c.fillRect(x, cardY, cardW, cardH);
-    c.strokeStyle = maroon; c.lineWidth = 1.5; c.strokeRect(x, cardY, cardW, cardH);
-    text(card.title, x + 18, cardY + 32, 12, maroon, "left", "700");
-    card.fields.forEach(([label, value], row) => field(label, value, x + 18, cardY + 63 + row * 46, cardW - 36));
-  });
-
-  let y = 646;
-  text("ITEM DETAILS", margin, y, 14, maroon, "left", "700");
-  text(`${items.length} ITEM${items.length === 1 ? "" : "S"} • ${first.foodType || ""}`, width - margin, y, 12, muted, "right", "700");
-  y += 18;
-  const tableX = margin, tableW = width - margin * 2;
-  roundRect(tableX, y, tableW, 48, 9, maroon);
-  const columns = [tableX + 38, tableX + 105, tableX + 690, tableX + 830, tableX + 975, tableX + tableW - 22];
-  ["#", "ITEM / SERVICE", "QTY", "UNIT", "RATE", "AMOUNT"].forEach((label, index) => text(label, columns[index], y + 31, 13, white, index > 1 ? "right" : "left", "700"));
-  y += 48;
-  items.forEach((item, index) => {
-    c.fillStyle = index % 2 ? "#fffdf9" : pale; c.fillRect(tableX, y, tableW, itemRowHeight);
-    rule(tableX, y + itemRowHeight, tableX + tableW, y + itemRowHeight);
-    text(String(index + 1), columns[0], y + 34, 16, muted);
-    c.font = "700 18px Arial"; text(fit(c, item.itemName, 545), columns[1], y + 34, 18, ink, "left", "700");
-    text(String(item.originalQty), columns[2], y + 34, 16, ink, "right", "600");
-    text(item.unit || "—", columns[3], y + 34, 15, muted, "right", "600");
-    text(money(item.rate), columns[4], y + 34, 16, ink, "right", "600");
-    text(money(item.originalQty * item.rate), columns[5], y + 34, 17, maroon, "right", "700");
-    y += itemRowHeight;
-  });
-  if (discount > 0) {
-    c.fillStyle = "#fbe5e2"; c.fillRect(tableX, y, tableW, itemRowHeight);
-    text(String(items.length + 1), columns[0], y + 34, 16, maroon, "left", "700");
-    text("Discount", columns[1], y + 34, 18, maroon, "left", "700");
-    text(`-${money(discount)}`, columns[5], y + 34, 17, maroon, "right", "700");
-    y += itemRowHeight;
-  }
-  c.strokeStyle = line; c.lineWidth = 1.5; c.strokeRect(tableX, y - items.length * itemRowHeight - (discount > 0 ? itemRowHeight : 0) - 48, tableW, y - (y - items.length * itemRowHeight - (discount > 0 ? itemRowHeight : 0) - 48));
-
-  y += 30;
-  if (advances.length) {
-    text("PAYMENT HISTORY", margin, y, 14, maroon, "left", "700"); y += 18;
-    roundRect(tableX, y, tableW, 44, 9, deep);
-    text("DATE", tableX + 22, y + 29, 12, white, "left", "700");
-    text("PAYMENT DETAILS", tableX + 220, y + 29, 12, white, "left", "700");
-    text("AMOUNT", tableX + tableW - 22, y + 29, 12, white, "right", "700"); y += 44;
-    advances.forEach((row, index) => {
-      c.fillStyle = index % 2 ? white : pale; c.fillRect(tableX, y, tableW, advanceRowHeight);
-      text(dateLabel(row.date), tableX + 22, y + 31, 15, ink);
-      text(fit(c, row.details || "Advance", 650), tableX + 220, y + 31, 15, ink);
-      text(money(row.amount), tableX + tableW - 22, y + 31, 16, maroon, "right", "700");
-      rule(tableX, y + advanceRowHeight, tableX + tableW, y + advanceRowHeight); y += advanceRowHeight;
+    const x = margin + index * cardWidth;
+    if (index > 0) rule(x, cardY, x, cardY + cardHeight, maroon, 1.5);
+    text(card.title, x + 20, cardY + 36, 16, maroon, "left", "700");
+    card.fields.forEach(([label, value], row) => {
+      const fieldY = cardY + 72 + row * 59;
+      text(label, x + 20, fieldY, 15, muted, "left", "700");
+      c.font = "700 23px Arial";
+      text(fit(c, value || "—", cardWidth - 40), x + 20, fieldY + 32, 23, ink, "left", "700");
     });
-  }
-
-  y += 32;
-  const summaryW = 470, summaryX = width - margin - summaryW;
-  roundRect(summaryX, y, summaryW, 176, 14, white, gold);
-  [["Grand Total", total], ["Advance Received", advance], ["Balance Payable", balance]].forEach(([label, value], index) => {
-    const rowY = y + 38 + index * 50;
-    if (index === 2) { c.fillStyle = maroon; c.fillRect(summaryX, rowY - 30, summaryW, 50); }
-    text(String(label), summaryX + 22, rowY, index === 2 ? 17 : 15, index === 2 ? white : muted, "left", index === 2 ? "700" : "600");
-    text(money(Number(value)), summaryX + summaryW - 22, rowY, index === 2 ? 23 : 19, index === 2 ? white : ink, "right", "700");
-    if (index < 2) rule(summaryX + 20, rowY + 13, summaryX + summaryW - 20, rowY + 13);
   });
 
-  const footerY = Math.max(y + 225, height - 315);
-  rule(margin, footerY, width - margin, footerY, gold, 2);
-  text("TERMS & CONDITIONS", margin, footerY + 38, 13, maroon, "left", "700");
-  text("• Payment is due on or before the event.", margin, footerY + 70, 14, muted);
-  text("• Please verify all bill details before making payment.", margin, footerY + 98, 14, muted);
-  text("• Thank you for choosing SS FOODS.", margin, footerY + 126, 14, muted);
-  text("Authorized Signature", 980, footerY + 38, 13, muted, "center", "600");
-  if (signature) {
-    const maxSignatureWidth = 220, maxSignatureHeight = 68;
-    const signatureRatio = Math.min(maxSignatureWidth / signature.width, maxSignatureHeight / signature.height);
-    const signatureWidth = signature.width * signatureRatio;
-    const signatureHeight = signature.height * signatureRatio;
-    c.save();
-    c.globalCompositeOperation = "multiply";
-    c.drawImage(signature, 980 - signatureWidth / 2, footerY + 47, signatureWidth, signatureHeight);
-    c.restore();
-  } else {
-    text("Saravanan", 980, footerY + 94, 34, "#174a9b", "center", "700", "cursive");
+  // Keep the reference grid while rendering only saved bill rows.
+  const edges = [margin, 186, 618, 780, 980, width - margin];
+  let y = 770;
+  const tableTop = y;
+  const headerHeight = 49;
+  const header = (labels: string[], boundaries: number[]) => {
+    c.fillStyle = maroon; c.fillRect(margin, y, tableW, headerHeight);
+    labels.forEach((label, index) => text(label, (boundaries[index] + boundaries[index + 1]) / 2, y + 34, 27, white, "center", "700", "Georgia"));
+    y += headerHeight;
+  };
+  header(["S.No.", "Item", "Qty", "Rate (₹)", "Amount (₹)"], edges);
+  for (let index = 0; index < itemRows; index++) {
+    const item = items[index];
+    const isDiscount = !item && discount > 0 && index === items.length;
+    text(String(index + 1), (edges[0] + edges[1]) / 2, y + 36, 25, ink, "center");
+    if (item) {
+      c.font = "400 25px Arial";
+      text(fit(c, item.itemName, edges[2] - edges[1] - 30), edges[1] + 20, y + 36, 25);
+      text(String(item.originalQty), (edges[2] + edges[3]) / 2, y + 36, 25, ink, "center");
+      text(item.rate.toLocaleString("en-IN"), (edges[3] + edges[4]) / 2, y + 36, 25, ink, "center");
+      text((item.originalQty * item.rate).toLocaleString("en-IN"), edges[5] - 22, y + 36, 25, ink, "right");
+    } else {
+      if (isDiscount) text("Discount", edges[1] + 20, y + 36, 25, maroon);
+      text(isDiscount ? `-${discount.toLocaleString("en-IN")}` : "0", edges[5] - 22, y + 36, 25, ink, "right");
+    }
+    y += itemRowHeight;
+    rule(margin, y, width - margin, y);
   }
-  rule(855, footerY + 111, 1105, footerY + 111, muted, 1.5);
-  text("SS FOODS", 980, footerY + 138, 13, maroon, "center", "700");
-  text("Thank You!", width / 2, height - 88, 47, maroon, "center", "400", "cursive");
-  text("WE LOOK FORWARD TO SERVING YOU", width / 2, height - 54, 12, ink, "center", "700");
+  c.fillStyle = "#fff3e5"; c.fillRect(margin, y, tableW, 49);
+  text("Total", edges[2] - 55, y + 34, 29, ink, "right", "700", "Georgia");
+  text(money(total), edges[5] - 22, y + 34, 35, maroon, "right", "700", "Georgia");
+  y += 49;
+  edges.slice(1, -1).forEach(x => rule(x, tableTop, x, y));
+  c.strokeStyle = maroon; c.lineWidth = 1.5; c.strokeRect(margin, tableTop, tableW, y - tableTop);
+
+  if (advanceRows > 0) {
+    y += 40;
+    text("ADVANCE", width / 2, y, 31, maroon, "center", "700", "Georgia");
+    rule(417, y - 10, 526, y - 10, maroon);
+    rule(714, y - 10, 823, y - 10, maroon);
+    y += 10;
+    const advanceTop = y, advanceEdges = [margin, 270, 867, width - margin];
+    header(["Date", "Details", "Amount (₹)"], advanceEdges);
+    const displayAdvances = advances.length ? advances : advance > 0 ? [{ date: "", details: "Advance received", amount: advance }] : [];
+    for (let index = 0; index < advanceRows; index++) {
+      const row = displayAdvances[index];
+      if (row) {
+        text(row.date ? dateLabel(row.date) : "—", 80, y + 32, 24);
+        c.font = "400 24px Arial";
+        text(fit(c, row.details, 565), 290, y + 32, 24);
+        text(row.amount.toLocaleString("en-IN"), width - margin - 22, y + 32, 25, ink, "right");
+      }
+      y += advanceRowHeight;
+      rule(margin, y, width - margin, y);
+    }
+    c.fillStyle = "#fff3e5"; c.fillRect(margin, y, tableW, 46);
+    text("Total", 835, y + 32, 29, ink, "right", "700", "Georgia");
+    text(money(advance), width - margin - 22, y + 32, 35, maroon, "right", "700", "Georgia");
+    y += 46;
+    advanceEdges.slice(1, -1).forEach(x => rule(x, advanceTop, x, y));
+    c.strokeStyle = maroon; c.strokeRect(margin, advanceTop, tableW, y - advanceTop);
+  }
+
+  y += 16;
+  const summaryX = 315, summaryW = 630;
+  roundRect(summaryX, y, summaryW, 147, 8, white, gold);
+  [["Grand Total", total], ["Less: Advance Received", advance], ["Balance Payable", balance]].forEach(([label, value], index) => {
+    const rowY = y + 35 + index * 49;
+    text(String(label), summaryX + 34, rowY, index === 2 ? 31 : 25, index === 2 ? maroon : ink, "left", index === 2 ? "700" : "400", index === 2 ? "Georgia" : "Arial");
+    text(money(Number(value)), summaryX + summaryW - 32, rowY, 31, index === 2 ? maroon : ink, "right", "700", "Georgia");
+    if (index < 2) rule(summaryX, y + (index + 1) * 49, summaryX + summaryW, y + (index + 1) * 49);
+  });
+
+  const footerY = footerTop + 30;
+  text("TERMS & CONDITIONS", 40, footerY, 20, maroon, "left", "700", "Georgia");
+  text("• Payment due on or before the event.", 30, footerY + 33, 19);
+  text("• Please verify the bill before making payment.", 30, footerY + 66, 19);
+  text("• Thank you for choosing SS FOODS.", 30, footerY + 99, 19);
+  rule(615, footerY - 18, 615, footerY + 99, gold);
+  text("Authorized Signature", 830, footerY, 19, ink, "center");
+  if (signature) {
+    const ratio = Math.min(225 / signature.width, 78 / signature.height);
+    c.save(); c.globalCompositeOperation = "multiply";
+    c.drawImage(signature, 830 - signature.width * ratio / 2, footerY + 8, signature.width * ratio, signature.height * ratio);
+    c.restore();
+  } else text("Saravanan", 830, footerY + 70, 36, "#174a9b", "center", "400", "cursive");
+  rule(735, footerY + 81, 925, footerY + 81, muted);
+  text("SS FOODS", 830, footerY + 108, 23, maroon, "center", "700", "Georgia");
+  text("Thank You!", width / 2, height - 72, 65, maroon, "center", "italic", "Georgia");
+  text("We look forward to serving you.", width / 2, height - 32, 26, ink, "center");
 
   return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Unable to create professional bill image")), "image/png"));
 }

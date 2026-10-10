@@ -2,6 +2,7 @@ export type DatabaseValue = string | number | null;
 export type DatabaseTableBackup = { name: string; columns: string[]; rows: Record<string, DatabaseValue>[] };
 export type DatabaseSnapshot = { tables: DatabaseTableBackup[]; sequences: { name: string; seq: number }[] };
 export type RestoreCommand = { sql: string; values: DatabaseValue[] };
+const environmentSpecificTables = new Set(['offline_sync_backups']);
 export function applicationTable(name: string) {
  return /^[A-Za-z][A-Za-z0-9_]*$/.test(name) && !name.startsWith('sqlite_') && !name.startsWith('_cf_') && name !== 'd1_migrations';
 }
@@ -27,16 +28,19 @@ export function validSnapshot(value: unknown): value is DatabaseSnapshot {
 export function restoreCommands(snapshot: DatabaseSnapshot, current: {name:string;columns:string[]}[], revisions: Record<string,number> = {}): RestoreCommand[] {
  if (!validSnapshot(snapshot)) throw new Error('Invalid full database backup');
  const schema = new Map(current.map(table=>[table.name,table.columns]));
- for (const table of snapshot.tables) {
+ const restorableTables = snapshot.tables.filter(table=>schema.has(table.name));
+ const unsupportedTables = snapshot.tables.filter(table=>!schema.has(table.name) && !environmentSpecificTables.has(table.name));
+ if (unsupportedTables.length) throw new Error(`Database structure differs for ${unsupportedTables[0].name}. Use the matching website version to restore this backup.`);
+ for (const table of restorableTables) {
   const columns = schema.get(table.name);
   if (!columns || columns.length !== table.columns.length || table.columns.some(c=>!columns.includes(c))) throw new Error(`Database structure differs for ${table.name}. Use the matching website version to restore this backup.`);
  }
- const commands:RestoreCommand[] = snapshot.tables.map(table=>({sql:`DELETE FROM ${quoteIdentifier(table.name)}`,values:[]}));
- for (const table of snapshot.tables) for (const row of table.rows) {
-  const values = table.columns.map(column=>column === 'revision' && (table.name === 'staff_rent_records' || table.name === 'decoration_catalog') ? Math.max(Number(row[column]),revisions[table.name] ?? 0)+1 : row[column]);
+ const commands:RestoreCommand[] = restorableTables.map(table=>({sql:`DELETE FROM ${quoteIdentifier(table.name)}`,values:[]}));
+ for (const table of restorableTables) for (const row of table.rows) {
+  const values = table.columns.map(column=>column === 'revision' && (table.name === 'staff_rent_records' || table.name === 'decoration_catalog' || table.name === 'photography_catalog') ? Math.max(Number(row[column]),revisions[table.name] ?? 0)+1 : row[column]);
   commands.push({sql:`INSERT INTO ${quoteIdentifier(table.name)} (${table.columns.map(quoteIdentifier).join(',')}) VALUES (${table.columns.map(()=>'?').join(',')})`,values});
  }
- for (const sequence of snapshot.sequences) {
+ for (const sequence of snapshot.sequences.filter(sequence=>schema.has(sequence.name))) {
   commands.push({sql:'DELETE FROM sqlite_sequence WHERE name = ?',values:[sequence.name]});
   commands.push({sql:'INSERT INTO sqlite_sequence (name,seq) VALUES (?,?)',values:[sequence.name,sequence.seq]});
  }

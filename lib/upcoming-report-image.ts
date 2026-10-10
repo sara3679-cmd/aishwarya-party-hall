@@ -9,6 +9,17 @@ export type UpcomingReportBooking = {
 
 type Column = { title: string; width: number; lines: (booking: UpcomingReportBooking) => string[]; emphasis?: boolean; money?: boolean };
 
+export function latestBookingIdsByLocation(rows: UpcomingReportBooking[]) {
+  const latest = new Map<string, number>();
+  for (const booking of rows) latest.set(booking.location, Math.max(latest.get(booking.location) ?? 0, booking.id));
+  return latest;
+}
+
+export const bookingsPerReportPage = 28;
+export function reportPageCount(rowCount: number) {
+  return Math.max(1, Math.ceil(rowCount / bookingsPerReportPage));
+}
+
 function fitText(context: CanvasRenderingContext2D, value: string, width: number) {
   if (context.measureText(value).width <= width) return value;
   let result = value;
@@ -27,9 +38,10 @@ async function loadHallLogo() {
 
 export async function createUpcomingReportImages(rows: UpcomingReportBooking[], includeAmounts: boolean) {
   const logo = await loadHallLogo();
+  const latestIds = latestBookingIdsByLocation(rows);
   const columns: Column[] = [
     { title: "DATE & TIME", width: includeAmounts ? 190 : 220, emphasis: true, lines: (item) => [formatDate(item.bookingDate), formatTimeRange12Hour(item.startTime, item.endTime)] },
-    { title: "BILL / LOCATION", width: includeAmounts ? 140 : 170, emphasis: true, lines: (item) => [item.billNo || "—", item.location.toUpperCase()] },
+    { title: "BILL / LOCATION", width: includeAmounts ? 140 : 170, emphasis: true, lines: (item) => [item.billNo || "—", latestIds.get(item.location) === item.id ? `★ LATEST ${item.location.toUpperCase()}` : item.location.toUpperCase()] },
     { title: "FUNCTION", width: includeAmounts ? 160 : 220, lines: (item) => [item.functionName] },
     { title: "CUSTOMER / MOBILE", width: includeAmounts ? 200 : 270, emphasis: true, lines: (item) => [item.customerName, item.mobile] },
   ];
@@ -40,14 +52,14 @@ export async function createUpcomingReportImages(rows: UpcomingReportBooking[], 
   );
   const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
   const canvasWidth = 1240; const canvasHeight = 1754; const side = Math.round((canvasWidth - tableWidth) / 2);
-  const perPage = Math.max(rows.length, 1); const pages = 1; const files: File[] = [];
+  const perPage = bookingsPerReportPage; const pages = reportPageCount(rows.length); const files: File[] = [];
   for (let page = 0; page < pages; page += 1) {
     const pageRows = rows.slice(page * perPage, (page + 1) * perPage);
     const tableTop = 330; const headerHeight = 50; const availableRowsHeight = canvasHeight - tableTop - headerHeight - 170;
     const rowHeight = Math.max(34, Math.min(66, Math.floor(availableRowsHeight / Math.max(pageRows.length, 1))));
     const canvas = document.createElement("canvas"); canvas.width = canvasWidth; canvas.height = canvasHeight;
     const context = canvas.getContext("2d"); if (!context) continue;
-    const maroon = "#87090d"; const gold = "#d5a52e"; const cream = "#fff9ef"; const ink = "#302624"; const line = "#e8d9c7";
+    const maroon = "#87090d"; const gold = "#d5a52e"; const ink = "#302624"; const line = "#e8d9c7";
     context.fillStyle = "#fffefa"; context.fillRect(0, 0, canvasWidth, canvasHeight);
     const cornerRibbon = (bottom = false) => {
       context.save(); if (bottom) { context.translate(canvasWidth, canvasHeight); context.rotate(Math.PI); }
@@ -80,13 +92,14 @@ export async function createUpcomingReportImages(rows: UpcomingReportBooking[], 
     });
     pageRows.forEach((booking, rowIndex) => {
       const y = tableTop + headerHeight + rowIndex * rowHeight; x = side;
+      const isLatest = latestIds.get(booking.location) === booking.id;
       columns.forEach((column, columnIndex) => {
         const isPadi = booking.location.toLocaleLowerCase("en-IN") === "padi";
-        context.fillStyle = isPadi ? (rowIndex % 2 ? "#fff5e3" : "#ffedc8") : (rowIndex % 2 ? "#f5eef9" : "#eadff2");
+        context.fillStyle = isLatest ? (isPadi ? "#8d0b0f" : "#713c89") : isPadi ? (rowIndex % 2 ? "#fff5e3" : "#ffedc8") : (rowIndex % 2 ? "#f5eef9" : "#eadff2");
         context.fillRect(x, y, column.width, rowHeight);
-        if (columnIndex === 0) { context.fillStyle = isPadi ? "#d99920" : "#7a4492"; context.fillRect(x, y, 7, rowHeight); }
-        context.strokeStyle = line; context.strokeRect(x, y, column.width, rowHeight);
-        const values = column.lines(booking); context.fillStyle = column.money ? maroon : column.emphasis ? (isPadi ? "#7c4c08" : "#5e286e") : ink;
+        if (columnIndex === 0) { context.fillStyle = isLatest ? "#f3c75f" : isPadi ? "#d99920" : "#7a4492"; context.fillRect(x, y, isLatest ? 11 : 7, rowHeight); }
+        context.strokeStyle = isLatest ? "#f3c75f" : line; context.lineWidth = isLatest ? 3 : 1; context.strokeRect(x, y, column.width, rowHeight);
+        const values = column.lines(booking); context.fillStyle = isLatest ? "#ffffff" : column.money ? maroon : column.emphasis ? (isPadi ? "#7c4c08" : "#5e286e") : ink;
         context.font = `${column.emphasis || column.money ? "700" : "500"} ${bodyFontSize}px Arial`; context.textAlign = "center";
         values.forEach((value, lineIndex) => {
           const firstLineY = values.length === 1 ? rowHeight / 2 + bodyFontSize * 0.35 : rowHeight / 2 - secondLineGap / 2 + bodyFontSize * 0.35;

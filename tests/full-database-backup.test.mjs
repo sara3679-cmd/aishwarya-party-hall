@@ -17,3 +17,15 @@ test('rejects malformed rows, duplicate tables, internal tables and schema misma
  assert.throws(()=>restoreCommands(snapshot,[{name:'staff_rent_records',columns:['id']}]),/structure differs/);
  assert.throws(()=>restoreCommands(snapshot,[]),/structure differs/);
 });
+test('restores portable business data while skipping the online-only recovery table',()=>{
+ const portable={tables:[
+  ...snapshot.tables,
+  {name:'offline_sync_backups',columns:['id','data_json'],rows:[{id:1,data_json:'{}'}]},
+ ],sequences:[{name:'offline_sync_backups',seq:1}]};
+ const plan=restoreCommands(portable,[{name:'staff_rent_records',columns:['id','payload','revision']}],{staff_rent_records:10});
+ assert.deepEqual(plan.map(command=>command.sql),[
+  'DELETE FROM "staff_rent_records"',
+  'INSERT INTO "staff_rent_records" ("id","payload","revision") VALUES (?,?,?)',
+ ]);
+ assert.deepEqual(plan[1].values,[1,'{"employees":[]}',11]);
+});

@@ -88,6 +88,7 @@ async function restoreFullDatabase(snapshot:DatabaseSnapshot) {
  const commands=restoreCommands(snapshot,schema,revisions);
  // D1 batch executes atomically: a failed insert rolls back all replacements.
  await env.DB.batch(commands.map(command=>env.DB.prepare(command.sql).bind(...command.values)));
+ return snapshot.tables.filter(table=>schema.some(current=>current.name===table.name)).length;
 }
 
 export async function GET(request: Request) {
@@ -143,9 +144,9 @@ export async function POST(request: Request) {
   if (!validateBackup(payload)) return Response.json({ error: "This is not a valid Aishwarya Party Hall database backup" }, { status: 400 });
   if (payload.version === 5 && payload.database) {
     try {
-      await restoreFullDatabase(payload.database);
+      const restoredTables = await restoreFullDatabase(payload.database);
       const count=(name:string)=>payload.database!.tables.find(table=>table.name===name)?.rows.length ?? 0;
-      return Response.json({success:true,counts:{bookings:count('bookings'),expenses:count('expenses'),additionalIncome:count('additional_income'),staffUsers:count('staff_users'),orderAdditions:count('order_additions_v5'),tables:payload.database.tables.length},fullDatabase:true});
+      return Response.json({success:true,counts:{bookings:count('bookings'),expenses:count('expenses'),additionalIncome:count('additional_income'),staffUsers:count('staff_users'),orderAdditions:count('order_additions_v5'),tables:restoredTables},fullDatabase:true});
     } catch(error) {
       return Response.json({error:error instanceof Error ? error.message : "Full database restore failed. No records were replaced."},{status:400});
     }
