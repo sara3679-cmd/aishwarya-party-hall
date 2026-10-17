@@ -67,7 +67,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if ((await getStaffSession(request))?.role !== "admin") return Response.json({ error: "Administrator access required" }, { status: 403 });
-  if (request.headers.get("origin") !== new URL(request.url).origin) return Response.json({ error: "Invalid request origin" }, { status: 403 });
+  // The hosting proxy may forward an internal request URL, while browsers send
+  // the public site origin. Keep the check strict but allow both canonical hosts.
+  const origin = request.headers.get("origin");
+  const allowedOrigins = new Set([new URL(request.url).origin, "https://www.aishwaryapartyhall.in", "https://aishwaryapartyhall.in"]);
+  if (!origin || !allowedOrigins.has(origin)) return Response.json({ error: "Invalid request origin" }, { status: 403 });
   try {
     const payload = await request.json() as Record<string, unknown>;
     const id = typeof payload.id === "string" ? payload.id : "";
