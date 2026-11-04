@@ -24,8 +24,18 @@ export async function exportFullDatabase():Promise<DatabaseSnapshot>{
 export async function restoreFullDatabase(snapshot:DatabaseSnapshot){
  if(!validSnapshot(snapshot))throw new Error('Invalid full database backup');
  await ensureStaffMobileColumn();await staffRentStore();await decorationStore();await photographyStore();
- const current=await schema();
- for(const table of snapshot.tables){if(current.find(t=>t.name===table.name)?.engine!=='InnoDB')throw new Error(`A matching transactional database table is required: ${table.name}`);}
+ let current=await schema();
+ const missing=snapshot.tables.find(table=>!current.some(existing=>existing.name===table.name));
+ if(missing)throw new Error(`Database table ${missing.name} is missing. This backup needs the matching website database schema; no records were changed.`);
+ // Non-transactional tables cannot take part in the all-or-nothing restore. Convert them first; MySQL retains their rows.
+ for(const table of snapshot.tables){
+  const existing=current.find(item=>item.name===table.name)!;
+  if(existing.engine==='InnoDB')continue;
+  try{await mysqlPool().query(`ALTER TABLE ${quote(table.name)} ENGINE=InnoDB`);}
+  catch{throw new Error(`Database table ${table.name} must use InnoDB for a safe restore. GoDaddy could not convert it automatically; no records were replaced.`);}
+ }
+ current=await schema();
+ for(const table of snapshot.tables){if(current.find(t=>t.name===table.name)?.engine!=='InnoDB')throw new Error(`Database table ${table.name} must use InnoDB for a safe restore. No records were replaced.`);}
  const connection=await mysqlPool().getConnection();
  try{
  await connection.beginTransaction();const revisions:Record<string,number>={};
