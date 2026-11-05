@@ -20,17 +20,52 @@ function metaConfig(kind: CampaignDraft["kind"]) {
   const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
   const templateName = kind === "greeting" ? process.env.META_WHATSAPP_GREETING_TEMPLATE_NAME : process.env.META_WHATSAPP_MARKETING_TEMPLATE_NAME;
   const language = kind === "greeting" ? process.env.META_WHATSAPP_GREETING_TEMPLATE_LANGUAGE ?? "en" : process.env.META_WHATSAPP_MARKETING_TEMPLATE_LANGUAGE ?? "en";
+  const headerImage = (kind === "greeting" ? process.env.META_WHATSAPP_GREETING_TEMPLATE_IMAGE_HEADER : process.env.META_WHATSAPP_MARKETING_TEMPLATE_IMAGE_HEADER) === "true";
   const enabled = process.env.NODE_ENV === "production" && process.env.META_WHATSAPP_ENABLE_SENDING === "true";
-  return enabled && token && phoneNumberId && templateName ? { token, phoneNumberId, templateName, language } : null;
+  return enabled && token && phoneNumberId && templateName ? { token, phoneNumberId, templateName, language, headerImage } : null;
 }
 
-async function sendTemplate(number: string, kind: CampaignDraft["kind"]) {
+async function uploadHeaderImage(config: NonNullable<ReturnType<typeof metaConfig>>, image: string) {
+  let mimeType = "image/png";
+  let base64: string;
+  if (image.startsWith("data:image/png;base64,")) base64 = image.slice("data:image/png;base64,".length);
+  else if (image.startsWith("data:image/jpeg;base64,")) {
+    mimeType = "image/jpeg";
+    base64 = image.slice("data:image/jpeg;base64,".length);
+  } else {
+    const imageUrl = image.startsWith("/images/") ? `https://www.aishwaryapartyhall.in${image}` : image;
+    const source = await fetch(imageUrl);
+    if (!source.ok) throw new Error("The campaign image could not be loaded.");
+    mimeType = source.headers.get("content-type")?.split(";")[0] ?? mimeType;
+    const bytes = new Uint8Array(await source.arrayBuffer());
+    base64 = Buffer.from(bytes).toString("base64");
+  }
+  if (mimeType !== "image/png" && mimeType !== "image/jpeg") throw new Error("The campaign image must be PNG or JPEG.");
+  const bytes = Buffer.from(base64, "base64");
+  const form = new FormData();
+  form.append("messaging_product", "whatsapp");
+  form.append("type", mimeType);
+  form.append("file", new Blob([bytes], { type: mimeType }), mimeType === "image/jpeg" ? "greeting.jpg" : "greeting.png");
+  const response = await fetch(`https://graph.facebook.com/v23.0/${config.phoneNumberId}/media`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${config.token}` },
+    body: form,
+  });
+  if (!response.ok) throw new Error("Meta did not accept the campaign image.");
+  const result = await response.json() as { id?: string };
+  if (!result.id) throw new Error("Meta did not return an image ID.");
+  return result.id;
+}
+
+async function sendTemplate(number: string, kind: CampaignDraft["kind"], imageId?: string) {
   const config = metaConfig(kind);
   if (!config) throw new Error("Meta template sending is not configured.");
+  if (config.headerImage && !imageId) throw new Error("This approved template requires a campaign image.");
+  const components = config.headerImage ? [{ type: "header", parameters: [{ type: "image", image: { id: imageId } }] }] : undefined;
   const response = await fetch(`https://graph.facebook.com/v23.0/${config.phoneNumberId}/messages`, {
     method: "POST",
     headers: { authorization: `Bearer ${config.token}`, "content-type": "application/json" },
-    body: JSON.stringify({ messaging_product: "whatsapp", to: number, type: "template", template: { name: config.templateName, language: { code: config.language } } }),
+    body: JSON.stringify({ messaging_product: "whatsapp", to: number, type: "template", template: { name: config.templateName, language: { code: config.language }, ...(components ? { components } : {}) } }),
   });
   if (!response.ok) throw new Error("Meta did not accept this message.");
 }
@@ -86,7 +121,14 @@ export async function POST(request: Request) {
         if (!metaConfig(existing.kind)) return Response.json({ error: "Meta sending is disabled in offline preview or the approved template is not configured." }, { status: 409 });
         const numbers = Array.isArray(payload.numbers) ? [...new Set(payload.numbers.filter((number): number is string => typeof number === "string" && existing.recipients.includes(number) && !existing.sent[number]))] : [];
         if (payload.sendPermission !== true || !numbers.length || numbers.length > 100) return Response.json({ error: "Review the pending recipients and confirm this batch before sending." }, { status: 400 });
-        const results = await Promise.allSettled(numbers.map(number => sendTemplate(number, existing.kind)));
+        const config = metaConfig(existing.kind)!;
+        if (config.headerImage && !existing.image) return Response.json({ error: "This approved Meta template requires an image. Add the campaign image before approval." }, { status: 409 });
+        let imageId: string | undefined;
+        if (config.headerImage) {
+          try { imageId = await uploadHeaderImage(config, existing.image); }
+          catch { return Response.json({ error: "Meta could not prepare the campaign image. No messages were sent." }, { status: 502 }); }
+        }
+        const results = await Promise.allSettled(numbers.map(number => sendTemplate(number, existing.kind, imageId)));
         const sent = numbers.filter((_, index) => results[index].status === "fulfilled");
         if (sent.length) await Promise.all(sent.map(number => db().execute(sql`INSERT IGNORE INTO greeting_manual_sends (campaign_id,phone_number,marked_at) VALUES (${id},${number},${new Date().toISOString()})`)));
         return Response.json({ draft: (await readDrafts()).find(draft => draft.id === id), sent: sent.length, failed: numbers.length - sent.length });
