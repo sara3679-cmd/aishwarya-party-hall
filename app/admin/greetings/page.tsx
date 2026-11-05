@@ -1,23 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { filterCustomers, groupCustomers, makeVcards, newCampaign, normalizePhone, whatsappLink, type CampaignDraft, type CampaignKind, type CustomerBooking } from "../../../lib/customer-campaigns";
+import { filterCustomers, groupCustomers, newCampaign, normalizePhone, type CampaignDraft, type CampaignKind, type CustomerBooking } from "../../../lib/customer-campaigns";
 import { formatDate } from "../../../lib/date-format";
 import "./greetings.css";
-
-function download(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url; anchor.download = filename; anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function contactDate(value: string) {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return "";
-  const [, year, month, day] = match;
-  return `${day}${["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][Number(month) - 1]}${year}`;
-}
 
 export default function GreetingsPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -33,8 +19,7 @@ export default function GreetingsPage() {
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState(false);
   const [consent, setConsent] = useState(false);
-  const [onlyPending, setOnlyPending] = useState(true);
-  const [sendingAvailable, setSendingAvailable] = useState(false);
+  const [sendingTemplates, setSendingTemplates] = useState<CampaignKind[]>([]);
   const [sendPermission, setSendPermission] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -53,7 +38,7 @@ export default function GreetingsPage() {
         const data = await campaigns.json();
         if (!campaigns.ok) throw new Error(data.error || "Unable to load campaigns.");
         if (!active) return;
-        setBookings(data.bookings); setDrafts(data.drafts); setDraft(data.drafts[0] ?? newCampaign()); setSendingAvailable(data.sendingAvailable === true);
+        setBookings(data.bookings); setDrafts(data.drafts); setDraft(data.drafts[0] ?? newCampaign()); setSendingTemplates(data.sendingTemplates ?? []);
       } catch (error) {
         if (active) { setLoadError(true); setNotice(error instanceof Error ? error.message : "Unable to load campaigns."); }
       }
@@ -70,15 +55,15 @@ export default function GreetingsPage() {
   const sentCount = draft ? Object.keys(draft.sent).length : 0;
   const locked = sentCount > 0;
   const pending = selected.filter(customer => !draft?.sent[customer.number]);
-  const sendList = onlyPending ? pending : selected;
+  const sendingAvailable = !!draft && sendingTemplates.includes(draft.kind);
 
   function change(patch: Partial<CampaignDraft>) {
     if (locked || busy) return;
     setDraft(current => current && ({ ...current, ...patch, approvedAt: null }));
-    setConsent(false); setNotice("");
+    setConsent(false); setSendPermission(false); setNotice("");
   }
   function chooseDraft(next: CampaignDraft) {
-    setDraft(next); setConsent(false); setNotice(""); setOnlyPending(true); setReview(false);
+    setDraft(next); setConsent(false); setSendPermission(false); setNotice(""); setReview(false);
     if (fileInput.current) fileInput.current.value = "";
   }
   function start(kind: CampaignKind) { chooseDraft(newCampaign(kind)); }
@@ -95,21 +80,9 @@ export default function GreetingsPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to save campaign.");
       setDraft(data.draft); setDrafts(items => [data.draft, ...items.filter(item => item.id !== draft.id)]);
-      setNotice(action === "approve" ? "Approved. The WhatsApp sending tools are ready below. Nothing has been sent automatically." : "Campaign saved for future use. No messages sent.");
+      setNotice(action === "approve" ? "Campaign approved and saved. No messages were sent." : "Campaign saved for future use. No messages sent.");
       if (action === "approve") setReview(false);
     } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to save campaign."); }
-    finally { setBusy(false); }
-  }
-  async function recordSent(number: string, undo = false) {
-    if (!draft?.approvedAt) return;
-    setBusy(true); setNotice("");
-    try {
-      const response = await fetch("/api/admin/greetings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: draft.id, number, expectedApproval: draft.approvedAt, action: undo ? "undoSent" : "markSent" }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to save sending record.");
-      setDraft(data.draft); setDrafts(items => items.map(item => item.id === draft.id ? data.draft : item));
-      setNotice(undo ? "Returned to pending. This does not remove a message from WhatsApp." : "Recorded as sent by you. WhatsApp delivery is not verified by this page.");
-    } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to save sending record."); }
     finally { setBusy(false); }
   }
   async function sendMetaBatch() {
@@ -134,28 +107,13 @@ export default function GreetingsPage() {
     reader.onerror = () => { setNotice("Unable to read image."); setBusy(false); };
     reader.readAsDataURL(file);
   }
-  async function downloadImage() {
-    if (!draft?.image) return;
-    try {
-      const response = await fetch(draft.image);
-      if (!response.ok) throw new Error();
-      const blob = await response.blob();
-      download(blob, `aishwarya-campaign-${draft.id}.${blob.type === "image/jpeg" ? "jpg" : "png"}`);
-    } catch { setNotice("Unable to download the image. Please try again."); }
-  }
-  async function copyMessage() {
-    if (!draft) return;
-    try { await navigator.clipboard.writeText(draft.message); setNotice("Message copied. Paste it into WhatsApp with the image."); }
-    catch { setNotice("Copy was unavailable. Use Download message, or select and copy the preview text."); }
-  }
-
   if (loadError) return <main className="adminPage"><h1>Customer Greetings & Advertisements</h1><p role="alert">{notice}</p><button onClick={() => window.location.reload()}>Try again</button><a href="/admin">Admin Home</a></main>;
   if (allowed === null || (allowed && !draft)) return <main className="adminPage"><p>Loading campaigns and customer history…</p></main>;
   if (!allowed || !draft) return <main className="adminPage"><h1>Customer Greetings & Advertisements</h1><p>Sign in as an administrator to prepare customer campaigns.</p><a href="/admin">Admin sign in</a></main>;
 
   return <main className="adminPage greetingsPage">
-    <header className="adminHeader"><div><p className="kicker">Aishwarya Party Hall</p><h1>Customer Greetings & Advertisements</h1><p>Save a campaign. Choose customers. Review and approve before opening WhatsApp.</p></div><a href="/admin">Admin Home</a></header>
-    <aside className="greetingsNotice"><strong>Send with your permission</strong><p>{sendingAvailable ? "Meta template sending is connected. You approve each campaign and then confirm every batch before it is sent." : "Manual WhatsApp sending is ready. Meta template sending needs its approved template name in the private server settings."}</p></aside>
+    <header className="adminHeader"><div><p className="kicker">Aishwarya Party Hall</p><h1>Customer Greetings & Advertisements</h1><p>Prepare a campaign, choose opted-in customers, then review it before any API send.</p></div><a href="/admin">Admin Home</a></header>
+    <aside className="greetingsNotice"><strong>{sendingAvailable ? "Meta template sending is configured" : "Offline preview · no WhatsApp messages sent"}</strong><p>{sendingAvailable ? "The selected campaign type will use its approved Meta template. You must confirm each batch before sending." : "You can prepare and review campaigns here. Sending is disabled on this offline copy, even if API credentials exist."}</p></aside>
     {notice && <p className="greetingsStatus" role="status">{notice}</p>}
     <div className="greetingsLayout">
       <section className="greetingsCard">
@@ -188,28 +146,19 @@ export default function GreetingsPage() {
         {missing > 0 && <p role="alert">{missing} saved number(s) no longer appear in confirmed bookings. Copy this campaign to review the available customers.</p>}
         <div className="greetingsTable"><table><thead><tr><th>Select</th><th>Customer</th><th>Latest function</th></tr></thead><tbody>{visible.map(customer => <tr key={customer.number}><td><input disabled={locked || busy} type="checkbox" aria-label={`Select ${customer.customerName} ${customer.number}`} checked={draft.recipients.includes(customer.number)} onChange={event => change({ recipients: event.target.checked ? [...draft.recipients, customer.number] : draft.recipients.filter(number => number !== customer.number) })} /></td><td><strong>{customer.customerName}</strong><br />+{customer.number}<br /><span className="greetingsHint">{customer.bookings.length} booking(s)</span></td><td>{formatDate(customer.bookingDate)}<br />{customer.location} · {customer.functionName}</td></tr>)}</tbody></table>{!visible.length && <p>No customers match these filters.</p>}</div>
         {!draft.approvedAt && <><button disabled={busy || !selected.length || !draft.title.trim() || (!draft.message.trim() && !draft.image) || !!missing} onClick={() => setReview(true)}>3. Preview & approve</button></>}
-        {draft.approvedAt && <p className="greetingsApproved">Approved · {formatDate(draft.approvedAt)}. Sending tools are ready below.</p>}
+        {draft.approvedAt && <p className="greetingsApproved">Approved · {formatDate(draft.approvedAt)}. No messages have been sent.</p>}
       </section>
     </div>
     {draft.approvedAt && <section className="greetingsCard greetingsSend" aria-label="Approved campaign sending tools">
       <h2>3. Send your approved campaign</h2>
       <p><strong>{draft.title}</strong> · {selected.length} recipients · <strong>{sentCount} marked sent</strong> · {pending.length} pending</p>
-      <p>Messages use the account signed into WhatsApp. Opening a chat does not send anything or attach the image. Attach the downloaded image, check the message and press Send.</p>
-      {sendingAvailable && <div className="greetingsNotice"><strong>Send through Meta API</strong><p>Meta sends the approved template to up to 100 pending customers at a time. It sends the template registered in Meta, not this page’s custom poster or message.</p><label className="greetingsConsent"><input type="checkbox" checked={sendPermission} onChange={event => setSendPermission(event.target.checked)} />I confirm I want Meta to send this batch of up to 100 approved recipients now.</label><button disabled={busy || !pending.length || !sendPermission} onClick={sendMetaBatch}>{busy ? "Sending through Meta…" : `Send next Meta batch · ${Math.min(100, pending.length)} customers`}</button></div>}
-      <div className="greetingsButtons">{draft.image && <button onClick={downloadImage}>Download image</button>}<button disabled={!draft.message} onClick={copyMessage}>Copy message</button><button className="secondary" disabled={!draft.message} onClick={() => download(new Blob([draft.message], { type: "text/plain;charset=utf-8" }), "aishwarya-message.txt")}>Download message</button></div>
-      <details className="greetingsBroadcast"><summary>Send as a broadcast from your phone</summary><p>Download the selected contacts in batches of up to 100 and import them on your phone if needed. Contact names use the batch number, customer name and their latest booking date, for example B1 - Name - 15SEP2026. Company uses APH - Location, for example APH - Padi. Open New broadcast in WhatsApp, select the customers in that batch, attach the image and paste the message.</p><p>Standard broadcasts reach customers who have saved the sending number. Follow any limits or charges shown in your phone app.</p><div className="greetingsButtons">{Array.from({ length: Math.ceil(selected.length / 100) }, (_, index) => {
-        const batch = selected.slice(index * 100, (index + 1) * 100);
-        return <button key={index} className="secondary" onClick={() => download(new Blob([makeVcards(batch.map(c => ({ ...c, customerName: `B${index + 1} - ${c.customerName} - ${contactDate(c.bookingDate)}` })))], { type: "text/vcard;charset=utf-8" }), `aishwarya-batch-${index + 1}-${batch.length}-customers.vcf`)}>Download batch {index + 1} · {batch.length} contacts</button>;
-      })}</div><p className="greetingsHint">After sending, mark only the customers you actually sent to in the list below.</p></details>
-      <label className="greetingsConsent"><input type="checkbox" checked={onlyPending} onChange={event => setOnlyPending(event.target.checked)} />Show pending customers only</label>
-      <div className="greetingsTable"><table><thead><tr><th>Customer</th><th>WhatsApp</th><th>Your sending record</th></tr></thead><tbody>{sendList.map(customer => <tr key={customer.number}><td><strong>{customer.customerName}</strong><br />+{customer.number}</td><td>{!draft.sent[customer.number] ? <a className="greetingsWhatsapp" href={whatsappLink(customer.number, draft.message)} target="_blank" rel="noopener noreferrer">Open WhatsApp</a> : <span>Marked sent</span>}</td><td>{draft.sent[customer.number] ? <><span className="greetingsHint">Marked by you · {formatDate(draft.sent[customer.number])}</span><br /><button className="secondary" disabled={busy} onClick={() => recordSent(customer.number, true)}>Undo mark</button></> : <button disabled={busy} onClick={() => recordSent(customer.number)}>I sent this — mark sent</button>}</td></tr>)}</tbody></table>{!sendList.length && <p>{pending.length ? "No customers shown." : "All selected customers are marked sent by you."}</p>}</div>
-      <p className="greetingsHint">This is your manual sending record, not a delivery or read receipt from WhatsApp. Saved campaigns keep these records for future reference.</p>
+      {!sendingAvailable ? <div className="greetingsNotice"><strong>Offline preview</strong><p>The Meta send control appears only on the published site after sending is separately enabled in production. Each campaign uses its approved greeting or marketing template; this page’s text and artwork are saved as review material and are not sent by Meta.</p></div> : <div className="greetingsNotice"><strong>Send through Meta API</strong><p>Meta sends the approved template for this campaign type to up to 100 pending recipients at a time. The website’s custom text and artwork are not transmitted unless they are part of that approved Meta template.</p><label className="greetingsConsent"><input type="checkbox" checked={sendPermission} onChange={event => setSendPermission(event.target.checked)} />I confirm I want Meta to send this batch of up to 100 selected recipients now.</label><button disabled={busy || !pending.length || !sendPermission} onClick={sendMetaBatch}>{busy ? "Sending through Meta…" : `Send next Meta batch · ${Math.min(100, pending.length)} recipients`}</button></div>}
     </section>}
     {review && <dialog ref={dialog} className="greetingsDialog" aria-labelledby="campaign-review-title" onCancel={() => setReview(false)}>
       <div className="greetingsButtons"><h2 id="campaign-review-title">Review before approving</h2><button className="secondary" disabled={busy} onClick={() => setReview(false)}>Close</button></div>
       <h3>{draft.title}</h3>{draft.image && <img className="greetingArtwork" src={draft.image} alt="Campaign approval preview" />}<p className="greetingsMessage">{draft.message}</p>
       <h3>{selected.length} selected customers</h3><div className="greetingsRecipients"><ul>{selected.map(customer => <li key={customer.number}>{customer.customerName} · +{customer.number}</li>)}</ul></div>
-      <p>Approval saves this exact message, image and customer list. You will still press Send in WhatsApp. No messages are sent automatically.</p>
+      <p>Approval saves this campaign draft and selected customer list. It does not send anything. The approved Meta template is sent only from the published site after production sending is enabled and each batch is confirmed.</p>
       {notice && <p role="status">{notice}</p>}
       <label className="greetingsConsent"><input disabled={busy} type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} />I confirm these selected customers have agreed to receive greetings and promotions from Aishwarya Party Hall.</label>
       <button disabled={busy || !consent} onClick={() => save("approve")}>{busy ? "Saving approval…" : "I approve — prepare WhatsApp sending"}</button>

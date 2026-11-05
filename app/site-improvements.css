@@ -35,6 +35,50 @@
 .latestBookingTag { display: block; width: max-content; margin-top: 7px; padding: 4px 7px; border-radius: 999px; background: #fff; color: #7c090c !important; font-size: 7px; font-weight: 900 !important; letter-spacing: .7px; line-height: 1; text-transform: uppercase; white-space: nowrap; }
 .latestKorattur .latestBookingTag { background: #713c89; color: #fff !important; }
 .bookingManagerTableWrap{width:100%;overflow-x:hidden}.bookingReport .bookingManagerTable{width:100%;min-width:0;table-layout:fixed;font-size:clamp(9px,.72vw,12px)}.bookingManagerTable th,.bookingManagerTable td{box-sizing:border-box;padding:12px 8px;overflow-wrap:anywhere}.bookingManagerTable th:nth-child(1){width:5%}.bookingManagerTable th:nth-child(1),.bookingManagerTable td:nth-child(1){text-align:center}.bookingManagerTable td:nth-child(1) .latestBookingTag{margin-right:auto;margin-left:auto}.bookingManagerTable th:nth-child(2){width:7%}.bookingManagerTable th:nth-child(3){width:12%}.bookingManagerTable th:nth-child(4){width:8%}.bookingManagerTable th:nth-child(5){width:11%}.bookingManagerTable th:nth-child(6){width:15%}.bookingManagerTable th:nth-child(7),.bookingManagerTable th:nth-child(8),.bookingManagerTable th:nth-child(9){width:8%}.bookingManagerTable th:nth-child(10){width:18%}.bookingManagerTable .dateColumn,.bookingManagerTable .dateCell,.bookingManagerTable .customerCell,.bookingManagerTable .functionCell,.bookingManagerTable .moneyColumn,.bookingManagerTable .moneyCell{min-width:0}.bookingManagerTable .locationBadge{min-width:0;width:100%;box-sizing:border-box;padding:6px 4px}.bookingManagerTable .bookingActions{display:grid!important;grid-template-columns:minmax(42px,.65fr) minmax(76px,1.35fr) minmax(50px,.8fr);gap:5px!important;align-items:stretch}.bookingManagerTable .bookingActions a,.bookingManagerTable .bookingActions button{display:grid;place-items:center;box-sizing:border-box;min-width:0!important;margin:0!important;padding:8px 5px!important;text-align:center;font-size:9px;line-height:1.15}.bookingManagerTable .customerCell small{display:block;max-height:2.8em;overflow:hidden;margin-top:5px;font-size:9px;line-height:1.4}.bookingManagerTable .latestBookingTag{white-space:normal;text-align:center}@media(max-width:900px){.bookingReport .bookingManagerTable{font-size:8px}.bookingManagerTable th,.bookingManagerTable td{padding:9px 4px}.bookingManagerTable th:nth-child(1){width:5%}.bookingManagerTable th:nth-child(2){width:7%}.bookingManagerTable th:nth-child(3){width:13%}.bookingManagerTable th:nth-child(4){width:8%}.bookingManagerTable th:nth-child(5){width:10%}.bookingManagerTable th:nth-child(6){width:14%}.bookingManagerTable th:nth-child(7),.bookingManagerTable th:nth-child(8),.bookingManagerTable th:nth-child(9){width:8%}.bookingManagerTable th:nth-child(10){width:19%}.bookingManagerTable .bookingActions{grid-template-columns:1fr}.bookingManagerTable .bookingActions a,.bookingManagerTable .bookingActions button{padding:5px 3px!important;font-size:7px}.bookingManagerTable .dateCell small,.bookingManagerTable .customerCell a{font-size:8px}.bookingManagerTable .customerCell small{display:none}}
+
+/* Booking manager rows become readable cards on phones instead of squeezed columns. */
+@media (max-width: 620px) {
+  .bookingManagerPage .bookingReport { padding: 20px 14px; }
+  .bookingManagerPage .bookingTableWrap,
+  .bookingManagerTableWrap { overflow: visible; margin: 0; border: 0; }
+  .bookingManagerPage .bookingManagerTable,
+  .bookingReport .bookingManagerTable { display: block; width: 100%; min-width: 0; table-layout: auto; font-size: 13px; }
+  .bookingManagerPage .bookingManagerTable thead { display: none; }
+  .bookingManagerPage .bookingManagerTable tbody { display: grid; gap: 12px; }
+  .bookingManagerPage .bookingManagerTable tbody tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 14px; padding: 16px 14px; border: 1px solid rgba(124,9,12,.14); border-left: 5px solid #d99920; border-radius: 8px; background: #fffaf3; box-shadow: 0 5px 14px rgba(79,36,24,.07); }
+  .bookingManagerPage .bookingManagerTable tbody tr:has(.locationBadge.korattur) { border-left-color: #8a55a0; background: #f6effa; }
+  .bookingManagerPage .bookingManagerTable tbody td { display: block; width: auto!important; min-width: 0; padding: 9px 0; border: 0!important; border-bottom: 1px solid rgba(124,9,12,.1)!important; text-align: left!important; overflow-wrap: anywhere; font-size: 13px; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(1) { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 0; color: var(--muted); font-size: 11px; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(3) { grid-column: 1 / -1; grid-row: 3; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(4) { grid-column: 2; grid-row: 2; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(5) { grid-column: 1; grid-row: 4; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(6) { grid-column: 2; grid-row: 4; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(7),
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(8),
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(9) { grid-column: span 1; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(10) { grid-column: 1 / -1; padding-bottom: 0; border-bottom: 0!important; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(2)::before { content: "BILL NO."; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(3)::before { content: "DATE & TIME"; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(4)::before { content: "LOCATION"; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(5)::before { content: "FUNCTION"; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(6)::before { content: "CUSTOMER"; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(7)::before { content: "AMOUNT"; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(8)::before { content: "ADVANCE"; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(9)::before { content: "BALANCE"; }
+  .bookingManagerPage .bookingManagerTable tbody td:nth-child(10)::before { content: "ACTIONS"; }
+  .bookingManagerPage .bookingManagerTable tbody td:not(:first-child)::before { display: block; margin-bottom: 5px; color: var(--muted); font: 800 9px/1.2 Arial,sans-serif; letter-spacing: .8px; }
+  .bookingManagerPage .bookingManagerTable .dateCell b,
+  .bookingManagerPage .bookingManagerTable .customerCell b { font-size: 14px; overflow-wrap: anywhere; }
+  .bookingManagerPage .bookingManagerTable .dateCell small,
+  .bookingManagerPage .bookingManagerTable .customerCell a,
+  .bookingManagerPage .bookingManagerTable .customerCell small { display: block; max-height: none; margin-top: 5px; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+  .bookingManagerPage .bookingManagerTable .locationBadge { display: inline-block; width: auto; min-width: 74px; padding: 7px 10px; }
+  .bookingManagerPage .bookingManagerTable .balanceCell { font-size: 15px; }
+  .bookingManagerPage .bookingManagerTable .bookingActions { display: grid!important; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px!important; }
+  .bookingManagerPage .bookingManagerTable .bookingActions a,
+  .bookingManagerPage .bookingManagerTable .bookingActions button { min-height: 40px; padding: 8px 5px!important; font-size: 10px; line-height: 1.15; }
+}
 .floatingActions { position: fixed; right: 22px; bottom: 22px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .whatsappButton, .availabilityButton { color: #fff; padding: 14px 19px; border-radius: 999px; box-shadow: 0 8px 25px rgba(0,0,0,.24); font-size: 12px; font-weight: 800; letter-spacing: .3px; }
 .whatsappButton { background: #1f9d55; }
@@ -50,3 +94,119 @@
 .legalPage p a { color: var(--maroon); font-weight: 700; }
 @media(max-width: 900px) { .planning { grid-template-columns: 1fr; gap: 50px; } }
 @media(max-width: 620px) { .floatingActions { right: 14px; bottom: 14px; } .whatsappButton, .availabilityButton { padding: 12px 16px; font-size: 11px; } .legalPage { padding: 50px 22px; } .legalPage > a { margin-bottom: 45px; } }
+
+/* Public website responsive layout and touch targets. */
+@media (max-width: 900px) {
+  .sectionPad { padding: 82px 6vw; }
+  .enquiry { grid-template-columns: minmax(0,1fr); }
+  .siteHeader { position: absolute; height: 78px; padding-inline: 5vw; background: linear-gradient(180deg, rgba(30,0,0,.5), transparent); }
+  .siteHeader nav { top: 78px; max-height: calc(100dvh - 78px); padding: 14px 6vw 22px; gap: 2px; }
+  .siteHeader nav a { min-height: 46px; display: flex; align-items: center; padding: 12px 14px; }
+  .hero { height: min(760px, 88svh); min-height: 570px; }
+  .heroContent { left: 6vw; right: 6vw; max-width: 680px; }
+  .heroContent h1 { font-size: clamp(54px, 8vw, 82px); letter-spacing: -3.5px; }
+  .introGrid { gap: 32px; }
+  .locationCards { gap: 20px; }
+  .locationCard { grid-template-rows: 270px 1fr; }
+  .locationBody { padding: 28px; }
+  .galleryHead { gap: 22px; }
+  .photoGrid { grid-auto-rows: clamp(150px, 22vw, 210px); }
+  .cateringVisual { min-height: 390px; }
+  .enquiry { gap: 42px; }
+  .footerLinks { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (min-width: 901px) and (max-width: 1450px) {
+  .siteHeader .headerCta { display: inline-flex; }
+  .siteHeader .menuButton { margin-left: 0; }
+}
+@media (max-width: 620px) {
+  .sectionPad { padding: 64px 22px; }
+  .enquiry { grid-template-columns: minmax(0,1fr); }
+  h2 { font-size: clamp(37px, 10vw, 50px); letter-spacing: -1.6px; }
+  .kicker { margin-bottom: 13px; font-size: 10px; letter-spacing: 2px; }
+  .siteHeader { height: 70px; padding-inline: 18px; }
+  .siteHeader .brand>img { width: 116px; height: 50px; object-fit: contain; }
+  .siteHeader nav { top: 70px; max-height: calc(100dvh - 70px); padding: 10px 14px 18px; }
+  .siteHeader nav a { min-height: 48px; padding-inline: 12px; font-size: 14px; }
+  .menuButton { width: 46px; height: 46px; border: 1px solid rgba(255,255,255,.5); border-radius: 50%; background: rgba(53,3,4,.34); }
+  .hero { height: max(620px, 92svh); min-height: 620px; }
+  .hero>img { object-position: 58% center; }
+  .heroShade { background: linear-gradient(90deg,rgba(33,0,0,.82),rgba(70,2,4,.45) 70%,rgba(22,0,0,.2)),linear-gradient(0deg,rgba(30,0,0,.58),transparent 75%); }
+  .heroContent { top: 48%; left: 22px; right: 22px; transform: translateY(-38%); }
+  .heroContent h1 { margin-bottom: 22px; font-size: clamp(47px, 13vw, 64px); line-height: .98; letter-spacing: -2.7px; }
+  .heroContent>p:not(.kicker) { max-width: 36ch; font-size: 16px; line-height: 1.55; }
+  .heroActions { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 24px; max-width: 310px; }
+  .heroActions a { min-height: 48px; display: flex; align-items: center; justify-content: center; padding: 14px 18px; text-align: center; }
+  .heroLocations { right: 22px; bottom: 20px; left: 22px; justify-content: flex-start; gap: 22px; }
+  .introGrid { gap: 10px; }
+  .introGrid h2 br { display: none; }
+  .introGrid>div>p, .planning>div>p:not(.kicker), .cateringCopy>p:not(.kicker) { font-size: 15px; line-height: 1.7; }
+  .quickFacts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 14px; margin-top: 24px; padding-top: 20px; }
+  .quickFacts span:last-child { grid-column: 1 / -1; }
+  .quickFacts b { font-size: 20px; }
+  .sectionTitle { margin-bottom: 32px; }
+  .sectionTitle>p { margin-top: 16px; font-size: 14px; }
+  .locationCards { grid-template-columns: minmax(0,1fr); gap: 18px; }
+  .locationCard { grid-template-rows: 220px 1fr; }
+  .locationBody { padding: 22px 19px; }
+  .locationBody h3 { font-size: 25px; }
+  .hallPackage { align-items: flex-start; flex-wrap: wrap; gap: 7px 12px; }
+  .hallPackage b { font-size: 25px; }
+  .hallPackage span { flex: 1 1 145px; }
+  .hallPackage strong { margin: 2px 0 0; max-width: none; width: 100%; }
+  .venueAddress { font-size: 12px!important; }
+  .locationBody ul { font-size: 12px; }
+  .mapCard { grid-template-columns: 52px minmax(0,1fr) 16px; gap: 9px; padding: 8px; }
+  .mapCard img { width: 52px; height: 52px; }
+  .mapCard b { font-size: 14px; }
+  .mapCard small { font-size: 9px; }
+  .occasionGrid { grid-template-columns: 1fr; }
+  .occasionGrid button { min-height: 78px; grid-template-columns: 32px minmax(0,1fr) 22px; padding: 16px; }
+  .occasionGrid b { font-size: 20px; }
+  .galleryHead { align-items: flex-start; flex-direction: column; margin-bottom: 25px; }
+  .tabs { width: 100%; }
+  .tabs button { min-height: 44px; flex: 1; }
+  .photoGrid { grid-template-columns: repeat(2,minmax(0,1fr)); grid-auto-rows: 140px; gap: 7px; }
+  .photoGrid .featurePhoto { grid-column: span 2; grid-row: span 2; }
+  .photoGrid button span { opacity: 1; right: 8px; bottom: 8px; }
+  .planning { gap: 28px; }
+  .planning .maroonButton { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 17px; }
+  .planning .maroonButton span { margin-left: 0; }
+  .faqList details { padding: 17px 0; }
+  .faqList summary { font-size: 18px; line-height: 1.35; }
+  .catering { gap: 30px; }
+  .cateringVisual { min-height: 260px; }
+  .cateringVisual:before { width: 210px; height: 210px; }
+  .plateOne { width: 130px; height: 130px; }
+  .plateTwo { width: 90px; height: 90px; }
+  .foodTypes span { grid-template-columns: 72px 1fr; gap: 8px; font-size: 11px; line-height: 1.45; }
+  .facilities { gap: 24px; }
+  .facilitiesIntro h2 { font-size: 38px; }
+  .facilityGrid { grid-template-columns: 1fr; }
+  .facilityGrid div { padding: 13px 4px; gap: 12px; }
+  .facilityGrid span { font-size: 15px; }
+  .enquiry { gap: 25px; }
+  .enquiryForm { padding: 24px 18px; }
+  .formRow { grid-template-columns: 1fr; gap: 0; }
+  .availabilityCard { padding: 20px 12px; }
+  .availabilityCard, .availabilityControls, .calendarWeek, .calendarGrid, .availabilityResult { width: 100%; min-width: 0; }
+  .availabilityControls { align-items: stretch; flex-direction: column; gap: 16px; margin-bottom: 18px; }
+  .availabilityControls select { width: 100%; min-height: 46px; }
+  .monthControls { justify-content: space-between; gap: 8px; }
+  .monthControls strong { min-width: 0; font-size: 16px; }
+  .monthControls button { width: 44px; height: 44px; flex: 0 0 44px; }
+  .calendarWeek, .calendarGrid { grid-template-columns: repeat(7,minmax(0,1fr)); gap: 4px; }
+  .calendarWeek span { padding: 5px 0; font-size: 9px; }
+  .calendarGrid>span, .calendarGrid button { min-height: 51px; }
+  .calendarGrid button { padding: 5px 1px; gap: 4px; }
+  .calendarGrid button b { font-size: 15px; }
+  .calendarGrid button small { max-width: 100%; overflow: hidden; font-size: 6px; letter-spacing: 0; white-space: nowrap; }
+  .availabilityResult { padding: 14px 12px; }
+  footer { padding: 48px 22px 22px; }
+  .footerTop { align-items: flex-start; flex-direction: column; gap: 20px; padding-bottom: 26px; }
+  .footerTop p { text-align: left; font-size: 18px; }
+  .footerLinks { grid-template-columns: 1fr; gap: 30px; padding: 30px 0; }
+  .footerBottom { flex-direction: column; gap: 8px; padding-top: 16px; line-height: 1.5; }
+  .floatingActions { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); gap: 8px; }
+  .whatsappButton, .availabilityButton { min-height: 44px; padding: 12px 15px; }
+}

@@ -68,7 +68,7 @@ function createZip() {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(`https://api.godaddy.com/v1/hosting/nodejs${path}`, {
+  const response = await fetch(`https://api.godaddy.com/v1/hosting${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${process.env.GODADDY_PAT}`,
@@ -114,14 +114,14 @@ if (prepareOnly) {
 
 console.log("4/5 Uploading to GoDaddy Preview…");
 const form = new FormData();
-form.append("zipFile", new Blob([readFileSync(outputZip)], { type: "application/zip" }), "aishwarya-party-hall.zip");
-const upload = await api(`/apps/${appId}/source`, { method: "POST", body: form });
-const jobId = upload.jobId || upload.job?.id;
-if (!jobId) throw new Error(`GoDaddy did not return an upload job ID: ${JSON.stringify(upload)}`);
+form.append("file", new Blob([readFileSync(outputZip)], { type: "application/zip" }), "aishwarya-party-hall.zip");
+const upload = await api(`/apps/${appId}/imports`, { method: "POST", body: form });
+const importId = upload.importId || upload.id || upload.operationId;
+if (!importId) throw new Error(`GoDaddy did not return an import ID: ${JSON.stringify(upload)}`);
 await poll(
   "Processing Preview upload",
-  () => api(`/apps/${appId}/source/status?jobId=${encodeURIComponent(jobId)}`),
-  (value) => /complete|completed|success|succeeded|ready/i.test(String(value.status))
+  () => api(`/apps/${appId}/imports/${encodeURIComponent(importId)}`),
+  (value) => /complete|completed|success|succeeded/i.test(String(value.status))
 );
 console.log("\nPreview upload is ready.");
 

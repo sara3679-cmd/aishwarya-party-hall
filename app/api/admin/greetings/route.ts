@@ -27,16 +27,17 @@ function publicDraft(draft: CampaignDraft & { approvedHash?: string | null }) {
   return { id: draft.id, title: draft.title, message: draft.message, image: draft.image, kind: draft.kind, recipients: draft.recipients, approvedAt: draft.approvedAt, sent: draft.sent };
 }
 
-function metaConfig() {
+function metaConfig(kind: CampaignDraft["kind"]) {
   const token = process.env.META_WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
-  const templateName = process.env.META_WHATSAPP_TEMPLATE_NAME;
-  const language = process.env.META_WHATSAPP_TEMPLATE_LANGUAGE ?? "en";
-  return token && phoneNumberId && templateName ? { token, phoneNumberId, templateName, language } : null;
+  const templateName = kind === "greeting" ? process.env.META_WHATSAPP_GREETING_TEMPLATE_NAME : process.env.META_WHATSAPP_MARKETING_TEMPLATE_NAME;
+  const language = kind === "greeting" ? process.env.META_WHATSAPP_GREETING_TEMPLATE_LANGUAGE ?? "en" : process.env.META_WHATSAPP_MARKETING_TEMPLATE_LANGUAGE ?? "en";
+  const enabled = process.env.NODE_ENV === "production" && process.env.META_WHATSAPP_ENABLE_SENDING === "true";
+  return enabled && token && phoneNumberId && templateName ? { token, phoneNumberId, templateName, language } : null;
 }
 
-async function sendTemplate(number: string) {
-  const config = metaConfig();
+async function sendTemplate(number: string, kind: CampaignDraft["kind"]) {
+  const config = metaConfig(kind);
   if (!config) throw new Error("Meta template sending is not configured.");
   const response = await fetch(`https://graph.facebook.com/v23.0/${config.phoneNumberId}/messages`, {
     method: "POST",
@@ -63,7 +64,8 @@ export async function GET(request: Request) {
     }
     return Response.json({
       drafts: (drafts.results as DraftRow[]).map(row => publicDraft({ ...row, recipients: JSON.parse(row.recipients), sent: sends.get(row.id) ?? {} })),
-      bookings: bookings.results, sendingAvailable: Boolean(metaConfig()),
+      bookings: bookings.results,
+      sendingTemplates: (["greeting", "advertisement"] as const).filter(kind => Boolean(metaConfig(kind))),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ error: "Unable to load campaigns. Please try again." }, { status: 500 }); }
 }
@@ -87,9 +89,9 @@ export async function POST(request: Request) {
     if (action === "markSent" || action === "undoSent" || action === "sendMetaBatch") {
       if (!existing?.approvedAt || existing.approvedHash !== await hashDraft(existing) || payload.expectedApproval !== existing.approvedAt) return Response.json({ error: "This campaign needs review or has changed in another window. Reload it before recording a send." }, { status: 409 });
       if (action === "sendMetaBatch") {
-        if (!metaConfig()) return Response.json({ error: "Meta template sending is not configured." }, { status: 409 });
+        if (!metaConfig(existing.kind)) return Response.json({ error: "Meta sending is disabled in offline preview or the approved template is not configured." }, { status: 409 });
         if (payload.sendPermission !== true || !Array.isArray(payload.numbers) || payload.numbers.length < 1 || payload.numbers.length > 100 || payload.numbers.some((number: unknown) => typeof number !== "string" || !existing.recipients.includes(number) || existing.sent[number])) return Response.json({ error: "Review the pending recipients and confirm this batch before sending." }, { status: 400 });
-        const results = await Promise.allSettled(payload.numbers.map((number: string) => sendTemplate(number)));
+        const results = await Promise.allSettled(payload.numbers.map((number: string) => sendTemplate(number, existing.kind)));
         const sent = payload.numbers.filter((_: string, index: number) => results[index].status === "fulfilled");
         if (sent.length) await env.DB.batch(sent.map((number: string) => env.DB.prepare("INSERT OR IGNORE INTO greeting_manual_sends (campaign_id,phone_number,marked_at) VALUES (?,?,?)").bind(payload.id,number,new Date().toISOString())));
         return Response.json({ draft: publicDraft((await readDraft(payload.id))!), sent: sent.length, failed: payload.numbers.length - sent.length });

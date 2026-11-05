@@ -15,16 +15,17 @@ function tables() {
   })().catch(error => { ready = null; throw error; });
 }
 
-function metaConfig() {
+function metaConfig(kind: CampaignDraft["kind"]) {
   const token = process.env.META_WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
-  const templateName = process.env.META_WHATSAPP_TEMPLATE_NAME;
-  const language = process.env.META_WHATSAPP_TEMPLATE_LANGUAGE ?? "en";
-  return token && phoneNumberId && templateName ? { token, phoneNumberId, templateName, language } : null;
+  const templateName = kind === "greeting" ? process.env.META_WHATSAPP_GREETING_TEMPLATE_NAME : process.env.META_WHATSAPP_MARKETING_TEMPLATE_NAME;
+  const language = kind === "greeting" ? process.env.META_WHATSAPP_GREETING_TEMPLATE_LANGUAGE ?? "en" : process.env.META_WHATSAPP_MARKETING_TEMPLATE_LANGUAGE ?? "en";
+  const enabled = process.env.NODE_ENV === "production" && process.env.META_WHATSAPP_ENABLE_SENDING === "true";
+  return enabled && token && phoneNumberId && templateName ? { token, phoneNumberId, templateName, language } : null;
 }
 
-async function sendTemplate(number: string) {
-  const config = metaConfig();
+async function sendTemplate(number: string, kind: CampaignDraft["kind"]) {
+  const config = metaConfig(kind);
   if (!config) throw new Error("Meta template sending is not configured.");
   const response = await fetch(`https://graph.facebook.com/v23.0/${config.phoneNumberId}/messages`, {
     method: "POST",
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
   try {
     const drafts = await readDrafts();
     const result = await db().execute(sql`SELECT id,customer_name AS customerName,mobile,location,booking_date AS bookingDate,function_name AS functionName,status FROM bookings WHERE status='confirmed' ORDER BY booking_date DESC,id DESC`);
-    return Response.json({ drafts, bookings: result[0], sendingAvailable: Boolean(metaConfig()) }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ drafts, bookings: result[0], sendingTemplates: (["greeting", "advertisement"] as const).filter(kind => Boolean(metaConfig(kind))) }, { headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ error: "Unable to load campaigns. Please try again." }, { status: 500 }); }
 }
 
@@ -82,10 +83,10 @@ export async function POST(request: Request) {
     if (action === "markSent" || action === "undoSent" || action === "sendMetaBatch") {
       if (!existing?.approvedAt || payload.expectedApproval !== existing.approvedAt) return Response.json({ error: "Reload this approved campaign before recording a send." }, { status: 409 });
       if (action === "sendMetaBatch") {
-        if (!metaConfig()) return Response.json({ error: "Meta template sending is not configured." }, { status: 409 });
+        if (!metaConfig(existing.kind)) return Response.json({ error: "Meta sending is disabled in offline preview or the approved template is not configured." }, { status: 409 });
         const numbers = Array.isArray(payload.numbers) ? [...new Set(payload.numbers.filter((number): number is string => typeof number === "string" && existing.recipients.includes(number) && !existing.sent[number]))] : [];
         if (payload.sendPermission !== true || !numbers.length || numbers.length > 100) return Response.json({ error: "Review the pending recipients and confirm this batch before sending." }, { status: 400 });
-        const results = await Promise.allSettled(numbers.map(sendTemplate));
+        const results = await Promise.allSettled(numbers.map(number => sendTemplate(number, existing.kind)));
         const sent = numbers.filter((_, index) => results[index].status === "fulfilled");
         if (sent.length) await Promise.all(sent.map(number => db().execute(sql`INSERT IGNORE INTO greeting_manual_sends (campaign_id,phone_number,marked_at) VALUES (${id},${number},${new Date().toISOString()})`)));
         return Response.json({ draft: (await readDrafts()).find(draft => draft.id === id), sent: sent.length, failed: numbers.length - sent.length });

@@ -3,7 +3,7 @@ export type CustomerBooking = { id: number; customerName: string; mobile: string
 export type CampaignCustomer = CustomerBooking & { number: string; bookings: CustomerBooking[] };
 export type CampaignDraft = { id: string; title: string; message: string; image: string; kind: CampaignKind; recipients: string[]; approvedAt: string | null; sent: Record<string, string> };
 
-export const greetingImage = "/images/greetings/vinayagar-chaturthi.png";
+export const greetingImage = "/images/greetings/diwali-2026.jpg";
 export const brandImage = "/images/brand/aishwarya-party-hall-whatsapp-profile.png";
 
 export function normalizePhone(value: string) {
@@ -42,23 +42,14 @@ export function filterCustomers(customers: CampaignCustomer[], filters: { period
 export function newCampaign(kind: CampaignKind = "greeting"): CampaignDraft {
   return {
     id: crypto.randomUUID(), kind, recipients: [], approvedAt: null, sent: {},
-    title: kind === "greeting" ? "Vinayagar Chaturthi Greetings" : "Aishwarya Party Hall Advertisement",
+    title: kind === "greeting" ? "Diwali Greetings 2026 · All Customers" : "Aishwarya Party Hall Advertisement",
     image: kind === "greeting" ? greetingImage : brandImage,
     message: kind === "greeting"
-      ? "இனிய விநாயகர் சதுர்த்தி நல்வாழ்த்துகள்! 🙏\nMay Lord Ganesha bless your family with happiness, prosperity and new beginnings.\nWarm wishes from Aishwarya Party Hall · Padi & Korattur\nBookings: +91 98848 06618"
+      ? "இனிய தீபாவளி நல்வாழ்த்துகள்! 🪔✨\nMay the festival of lights fill your home with joy, peace, prosperity, and beautiful moments together.\nWarm wishes from the Aishwarya Party Hall team · Padi & Korattur"
       : "உங்கள் குடும்ப விழாக்களுக்கு ஐஸ்வர்யா பார்ட்டி ஹால்!\nCelebrate your next birthday, engagement, baby shower or family function with Aishwarya Party Hall.\n📍 Padi & Korattur, Chennai\nFor availability and bookings: +91 98848 06618\nhttps://www.aishwaryapartyhall.in/\nReply STOP if you prefer not to receive promotions.",
   };
 }
 
 export function campaignContent(draft: Pick<CampaignDraft, "title" | "message" | "image" | "kind" | "recipients">) {
   return JSON.stringify([draft.title.trim(), draft.message, draft.image, draft.kind, [...new Set(draft.recipients)].sort()]);
-}
-
-export function makeVcards(customers: Pick<CampaignCustomer, "customerName" | "number" | "location">[]) {
-  const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,");
-  return customers.map(c => `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${escape(c.customerName)}\r\nN:;${escape(c.customerName)};;;\r\nORG:${escape(`APH - ${c.location}`)}\r\nTEL;TYPE=CELL:+${c.number}\r\nEND:VCARD\r\n`).join("");
-}
-
-export function whatsappLink(number: string, message: string) {
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
