@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { filterCustomers, groupCustomers, newCampaign, normalizePhone, type CampaignDraft, type CampaignKind, type CustomerBooking } from "../../../lib/customer-campaigns";
+import { filterCustomers, groupCustomers, makeVcards, newCampaign, normalizePhone, type CampaignDraft, type CampaignKind, type CustomerBooking } from "../../../lib/customer-campaigns";
 import { formatDate } from "../../../lib/date-format";
 import "./greetings.css";
 
@@ -56,6 +56,40 @@ export default function GreetingsPage() {
   const locked = sentCount > 0;
   const pending = selected.filter(customer => !draft?.sent[customer.number]);
   const sendingAvailable = !!draft && sendingTemplates.includes(draft.kind);
+  const contactBatches = Array.from({ length: Math.ceil(selected.length / 100) }, (_, index) => selected.slice(index * 100, (index + 1) * 100));
+
+  function downloadContactFile(customers: typeof selected, filename: string) {
+    const url = URL.createObjectURL(new Blob([makeVcards(customers)], { type: "text/vcard;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function contactNamesForBatch(batch: typeof selected, batchNumber: number) {
+    return batch.map(customer => ({
+      ...customer,
+      customerName: `B${batchNumber} - ${customer.customerName} - ${contactDate(customer.bookingDate)}`,
+    }));
+  }
+
+  function downloadContacts(batch: typeof selected, batchNumber: number) {
+    downloadContactFile(contactNamesForBatch(batch, batchNumber), `aishwarya-batch-${batchNumber}-${batch.length}-customers.vcf`);
+  }
+
+  function downloadFullContactList() {
+    const allCustomerBatches = Array.from({ length: Math.ceil(customers.length / 100) }, (_, index) => customers.slice(index * 100, (index + 1) * 100));
+    const contactNames = allCustomerBatches.flatMap((batch, index) => contactNamesForBatch(batch, index + 1));
+    downloadContactFile(contactNames, `aishwarya-full-contact-list-${customers.length}-customers.vcf`);
+  }
+
+  function contactDate(value: string) {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return "";
+    const [, year, month, day] = match;
+    return `${day}${["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][Number(month) - 1]}${year}`;
+  }
 
   function change(patch: Partial<CampaignDraft>) {
     if (locked || busy) return;
@@ -149,10 +183,11 @@ export default function GreetingsPage() {
         {draft.approvedAt && <p className="greetingsApproved">Approved · {formatDate(draft.approvedAt)}. No messages have been sent.</p>}
       </section>
     </div>
-    {draft.approvedAt && <section className="greetingsCard greetingsSend" aria-label="Approved campaign sending tools">
-      <h2>3. Send your approved campaign</h2>
+    {draft.approvedAt && <section className="greetingsCard greetingsSend" aria-label={sendingAvailable ? "Approved campaign sending tools" : "Offline approved campaign"}>
+      <h2>{sendingAvailable ? "3. Send your approved campaign" : "3. Offline approval status"}</h2>
       <p><strong>{draft.title}</strong> · {selected.length} recipients · <strong>{sentCount} marked sent</strong> · {pending.length} pending</p>
       {!sendingAvailable ? <div className="greetingsNotice"><strong>Offline preview</strong><p>The Meta send control appears only on the published site after sending is separately enabled in production. Each campaign uses its approved greeting or marketing template; this page’s text and artwork are saved as review material and are not sent by Meta.</p></div> : <div className="greetingsNotice"><strong>Send through Meta API</strong><p>Meta sends the approved template for this campaign type to up to 100 pending recipients at a time. The website’s custom text and artwork are not transmitted unless they are part of that approved Meta template.</p><label className="greetingsConsent"><input type="checkbox" checked={sendPermission} onChange={event => setSendPermission(event.target.checked)} />I confirm I want Meta to send this batch of up to 100 selected recipients now.</label><button disabled={busy || !pending.length || !sendPermission} onClick={sendMetaBatch}>{busy ? "Sending through Meta…" : `Send next Meta batch · ${Math.min(100, pending.length)} recipients`}</button></div>}
+      <div className="greetingsNotice"><strong>Google Contacts files</strong><p>Download confirmed-booking contacts with valid phone numbers, including saved addresses, or download the selected campaign customers in batches of up to 100.</p><div className="greetingsButtons"><button disabled={!customers.length} onClick={downloadFullContactList}>Download full contact list · {customers.length} contacts</button>{contactBatches.map((batch, index) => <button key={index} className="secondary" disabled={!batch.length} onClick={() => downloadContacts(batch, index + 1)}>Download batch {index + 1} · {batch.length} contacts</button>)}</div></div>
     </section>}
     {review && <dialog ref={dialog} className="greetingsDialog" aria-labelledby="campaign-review-title" onCancel={() => setReview(false)}>
       <div className="greetingsButtons"><h2 id="campaign-review-title">Review before approving</h2><button className="secondary" disabled={busy} onClick={() => setReview(false)}>Close</button></div>
@@ -161,7 +196,7 @@ export default function GreetingsPage() {
       <p>Approval saves this campaign draft and selected customer list. It does not send anything. The approved Meta template is sent only from the published site after production sending is enabled and each batch is confirmed.</p>
       {notice && <p role="status">{notice}</p>}
       <label className="greetingsConsent"><input disabled={busy} type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} />I confirm these selected customers have agreed to receive greetings and promotions from Aishwarya Party Hall.</label>
-      <button disabled={busy || !consent} onClick={() => save("approve")}>{busy ? "Saving approval…" : "I approve — prepare WhatsApp sending"}</button>
+      <button disabled={busy || !consent} onClick={() => save("approve")}>{busy ? "Saving approval…" : sendingAvailable ? "I approve — prepare WhatsApp sending" : "Approve offline — save draft only"}</button>
     </dialog>}
   </main>;
 }

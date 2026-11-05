@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     const [drafts, bookings, log] = await env.DB.batch([
       env.DB.prepare(`${draftSql} ORDER BY d.updated_at DESC`),
       // Include the full booking history without exposing billing or login details.
-      env.DB.prepare("SELECT id,customer_name AS customerName,mobile,location,booking_date AS bookingDate,function_name AS functionName,status FROM bookings WHERE status='confirmed' ORDER BY booking_date DESC,id DESC"),
+      env.DB.prepare("SELECT id,customer_name AS customerName,mobile,mobile2,address,location,booking_date AS bookingDate,function_name AS functionName,status FROM bookings WHERE status='confirmed' ORDER BY booking_date DESC,id DESC"),
       env.DB.prepare("SELECT campaign_id AS campaignId,phone_number AS number,marked_at AS markedAt FROM greeting_manual_sends"),
     ]);
     const sends = new Map<string, Record<string, string>>();

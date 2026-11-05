@@ -3,11 +3,34 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatTimeRange12Hour } from "../../../../lib/format-time";
 import { formatDate } from "../../../../lib/date-format";
+import { makeVcards, normalizePhone } from "../../../../lib/customer-campaigns";
 import "../../booking-actions.css";
 
-type Booking = { id: number; location: "Padi" | "Korattur"; bookingDate: string; startTime: string; endTime: string; billNo: string; functionName: string; customerName: string; mobile: string; amount: number; advanceReceived: number; expenseAmount: number; commissionAmount: number };
+type Booking = { id: number; location: "Padi" | "Korattur"; bookingDate: string; startTime: string; endTime: string; billNo: string; functionName: string; customerName: string; mobile: string; mobile2?: string; address?: string; amount: number; advanceReceived: number; expenseAmount: number; commissionAmount: number };
 type StaffRole = "admin" | "viewer";
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function contactDate(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "";
+  const [, year, month, day] = match;
+  return `${day}${["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][Number(month) - 1]}${year}`;
+}
+
+function downloadBookingContact(booking: Booking) {
+  const number = normalizePhone(booking.mobile);
+  if (!number) return;
+  const name = `B1 - ${booking.customerName} - ${contactDate(booking.bookingDate)}`;
+  const secondNumber = booking.mobile2 ? normalizePhone(booking.mobile2) : "";
+  const content = makeVcards([{ customerName: name, number, location: booking.location, additionalNumbers: secondNumber ? [secondNumber] : [], address: booking.address }]);
+  const url = URL.createObjectURL(new Blob([content], { type: "text/vcard;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  const filePart = `${booking.billNo || booking.id}-${booking.customerName}`.replace(/[^a-zA-Z0-9-]+/g, "-").replace(/^-|-$/g, "");
+  anchor.href = url;
+  anchor.download = `aishwarya-booking-${filePart}-contact.vcf`;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 export default function BookingReportsPage() {
   const currentDate = new Date();
@@ -107,7 +130,7 @@ export default function BookingReportsPage() {
       const advance = rows.reduce((sum, item) => sum + item.advanceReceived, 0);
       return <section className={`bookingMonthGroup ${groupLocation.toLowerCase()}`} key={key}>
         <header><div><span>{groupLocation}</span><h2>{monthNames[Number(groupMonth) - 1]} {groupYear}</h2><p>{rows.length} confirmed booking{rows.length === 1 ? "" : "s"}</p></div>{role === "admin" && <div className="groupMoney"><span>Total <b>₹{total.toLocaleString("en-IN")}</b></span><span>Received <b>₹{advance.toLocaleString("en-IN")}</b></span><span>Balance <b>₹{(total - advance).toLocaleString("en-IN")}</b></span></div>}</header>
-        <div className="reportTableWrap"><table><thead><tr><th scope="col">S.No.</th><th>Date & Time</th><th>Bill No.</th><th>Function</th><th>Customer</th>{role === "admin" && <><th>Booking Revenue</th><th>Additional Revenue</th><th>Expenses</th><th>Profit / Loss</th><th>Balance</th><th className="bookingActionsColumn">Actions</th></>}</tr></thead><tbody>{rows.map((item, index) => { const balance = item.amount - item.advanceReceived; const profit = item.amount + item.commissionAmount - item.expenseAmount; return <tr key={item.id}><td>{index + 1}</td><td><b>{formatDate(item.bookingDate)}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td>{item.billNo || "—"}</td><td>{item.functionName}</td><td><b>{item.customerName}</b><small>{item.mobile}</small></td>{role === "admin" && <><td>₹{item.amount.toLocaleString("en-IN")}</td><td>₹{item.commissionAmount.toLocaleString("en-IN")}</td><td>₹{item.expenseAmount.toLocaleString("en-IN")}</td><td className={profit >= 0 ? "bookingProfit" : "bookingLoss"}>{profit >= 0 ? "Profit" : "Loss"} ₹{Math.abs(profit).toLocaleString("en-IN")}</td><td>₹{balance.toLocaleString("en-IN")}</td><td className="bookingActionsColumn"><div className="bookingReportActions">{balance > 0 && <button className="receivedButton" disabled={savingId === item.id} onClick={() => receiveBalance(item)}>{savingId === item.id ? "Saving…" : "Received"}</button>}<button className="incomeButton" disabled={savingId === item.id} onClick={() => addCommission(item)}>Revenue</button><a className="expenseButton" href={expenseUrl(item)}>Expenses</a><a className="editButton" href={`/admin/bookings/new?editBooking=${item.id}`}>Edit</a><button className="deleteButton" disabled={savingId === item.id} onClick={() => deleteBooking(item)}>{savingId === item.id ? "Deleting…" : "Delete"}</button></div></td></>}</tr>; })}</tbody></table></div>
+        <div className="reportTableWrap"><table><thead><tr><th scope="col">S.No.</th><th>Date &amp; Time</th><th>Bill No.</th><th>Function</th><th>Customer</th>{role === "admin" && <><th>Booking Revenue</th><th>Additional Revenue</th><th>Expenses</th><th>Profit / Loss</th><th>Balance</th><th className="bookingActionsColumn">Actions</th></>}</tr></thead><tbody>{rows.map((item, index) => { const balance = item.amount - item.advanceReceived; const profit = item.amount + item.commissionAmount - item.expenseAmount; return <tr key={item.id}><td data-label="S.No.">{index + 1}</td><td data-label="Date & time"><b>{formatDate(item.bookingDate)}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td data-label="Bill no.">{item.billNo || "—"}</td><td data-label="Function">{item.functionName}</td><td data-label="Customer"><b>{role === "admin" && normalizePhone(item.mobile) ? <button className="customerContactDownload" onClick={() => downloadBookingContact(item)}>{item.customerName}</button> : item.customerName}</b><small>{item.mobile}</small>{item.mobile2 && <small>{item.mobile2}</small>}{item.address && <small>{item.address}</small>}</td>{role === "admin" && <><td data-label="Booking revenue">₹{item.amount.toLocaleString("en-IN")}</td><td data-label="Additional revenue">₹{item.commissionAmount.toLocaleString("en-IN")}</td><td data-label="Expenses">₹{item.expenseAmount.toLocaleString("en-IN")}</td><td data-label="Profit / loss" className={profit >= 0 ? "bookingProfit" : "bookingLoss"}>{profit >= 0 ? "Profit" : "Loss"} ₹{Math.abs(profit).toLocaleString("en-IN")}</td><td data-label="Balance">₹{balance.toLocaleString("en-IN")}</td><td data-label="Actions" className="bookingActionsColumn"><div className="bookingReportActions">{balance > 0 && <button className="receivedButton" disabled={savingId === item.id} onClick={() => receiveBalance(item)}>{savingId === item.id ? "Saving…" : "Received"}</button>}<button className="incomeButton" disabled={savingId === item.id} onClick={() => addCommission(item)}>Revenue</button><a className="expenseButton" href={expenseUrl(item)}>Expenses</a><a className="editButton" href={`/admin/bookings/new?editBooking=${item.id}`}>Edit</a><button className="deleteButton" disabled={savingId === item.id} onClick={() => deleteBooking(item)}>{savingId === item.id ? "Deleting…" : "Delete"}</button></div></td></>}</tr>; })}</tbody></table></div>
       </section>;
     }) : <p className="emptyBookings">No bookings found for the selected period and location.</p>}</div>}
   </main>;

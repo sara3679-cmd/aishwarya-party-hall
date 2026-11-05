@@ -96,7 +96,7 @@ export async function GET(request: Request) {
   if ((await getStaffSession(request))?.role !== "admin") return Response.json({ error: "Administrator access required" }, { status: 403 });
   try {
     const drafts = await readDrafts();
-    const result = await db().execute(sql`SELECT id,customer_name AS customerName,mobile,location,booking_date AS bookingDate,function_name AS functionName,status FROM bookings WHERE status='confirmed' ORDER BY booking_date DESC,id DESC`);
+    const result = await db().execute(sql`SELECT id,customer_name AS customerName,mobile,mobile2,address,location,booking_date AS bookingDate,function_name AS functionName,status FROM bookings WHERE status='confirmed' ORDER BY booking_date DESC,id DESC`);
     return Response.json({ drafts, bookings: result[0], sendingTemplates: (["greeting", "advertisement"] as const).filter(kind => Boolean(metaConfig(kind))) }, { headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ error: "Unable to load campaigns. Please try again." }, { status: 500 }); }
 }

@@ -44,6 +44,105 @@
 .bookingMonthGroup td.bookingProfit { color: #247245; font-weight: 800; }
 .bookingMonthGroup td.bookingLoss { color: #a20b0f; font-weight: 800; }
 
+@media (max-width: 620px) {
+  .bookingReportsPage .bookingAdminNav {
+    flex-flow: row wrap !important;
+    overflow: visible;
+    row-gap: 8px;
+  }
+
+  .bookingReportsPage .bookingMonthGroup .reportTableWrap {
+    overflow: visible;
+    border: 0;
+  }
+
+  .bookingReportsPage .bookingMonthGroup table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .bookingReportsPage .bookingMonthGroup thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .bookingReportsPage .bookingMonthGroup tbody {
+    display: grid;
+    gap: 12px;
+    padding: 0 12px 14px;
+  }
+
+  .bookingReportsPage .bookingMonthGroup tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid #eadfd7;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fffdf9;
+    box-shadow: 0 3px 12px rgba(79, 36, 24, .06);
+  }
+
+  .bookingReportsPage .bookingMonthGroup tbody td {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 10px !important;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .bookingReportsPage .bookingMonthGroup tbody td::before {
+    content: attr(data-label);
+    margin-bottom: 4px;
+    color: #846e64;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .45px;
+    text-transform: uppercase;
+  }
+
+  .bookingReportsPage .bookingMonthGroup tbody td:nth-child(5),
+  .bookingReportsPage .bookingMonthGroup tbody td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .bookingReportsPage .bookingMonthGroup tbody td:nth-child(5) small {
+    margin-top: 4px;
+  }
+
+  .bookingReportsPage .bookingMonthGroup tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .bookingReportsPage .bookingReportActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    white-space: normal;
+  }
+
+  .bookingReportsPage .bookingReportActions button,
+  .bookingReportsPage .bookingReportActions a {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 9px;
+    text-align: center;
+    font-size: 10px;
+  }
+}
+
 @media print {
   .bookingReportActions, .bookingActionsColumn { display: none !important; }
 }

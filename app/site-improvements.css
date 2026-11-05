@@ -210,3 +210,18 @@
   .floatingActions { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); gap: 8px; }
   .whatsappButton, .availabilityButton { min-height: 44px; padding: 12px 15px; }
 }
+
+.bookingManagerPage .customerCell .customerContactDownload {
+  display: inline-block;
+  min-height: 36px;
+  margin-top: 7px;
+  padding: 8px 10px;
+  border: 1px solid #e3c894;
+  border-radius: 3px;
+  background: #fff6e5;
+  color: #7c090c;
+  font: 700 10px Arial, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+}
+.bookingManagerPage .customerCell .customerContactDownload:hover { background: #f7e4bf; }

@@ -1,6 +1,6 @@
 export type CampaignKind = "greeting" | "advertisement";
-export type CustomerBooking = { id: number; customerName: string; mobile: string; location: string; bookingDate: string; functionName: string; status: string };
-export type CampaignCustomer = CustomerBooking & { number: string; bookings: CustomerBooking[] };
+export type CustomerBooking = { id: number; customerName: string; mobile: string; mobile2?: string; address?: string; location: string; bookingDate: string; functionName: string; status: string };
+export type CampaignCustomer = CustomerBooking & { number: string; bookings: CustomerBooking[]; additionalNumbers?: string[] };
 export type CampaignDraft = { id: string; title: string; message: string; image: string; kind: CampaignKind; recipients: string[]; approvedAt: string | null; sent: Record<string, string> };
 
 export const greetingImage = "/images/greetings/diwali-2026.jpg";
@@ -21,8 +21,15 @@ export function groupCustomers(bookings: CustomerBooking[]) {
     const number = normalizePhone(booking.mobile);
     if (!number) continue;
     const existing = map.get(number);
-    if (existing) existing.bookings.push(booking);
-    else map.set(number, { ...booking, number, bookings: [booking] });
+    if (existing) {
+      existing.bookings.push(booking);
+      const additional = booking.mobile2 ? normalizePhone(booking.mobile2) : "";
+      if (additional && additional !== number && !existing.additionalNumbers?.includes(additional)) existing.additionalNumbers = [...(existing.additionalNumbers ?? []), additional];
+      if (!existing.address && booking.address) existing.address = booking.address;
+    } else {
+      const additional = booking.mobile2 ? normalizePhone(booking.mobile2) : "";
+      map.set(number, { ...booking, number, bookings: [booking], additionalNumbers: additional && additional !== number ? [additional] : [] });
+    }
   }
   return [...map.values()].sort((a, b) => a.customerName.localeCompare(b.customerName));
 }
@@ -52,4 +59,13 @@ export function newCampaign(kind: CampaignKind = "greeting"): CampaignDraft {
 
 export function campaignContent(draft: Pick<CampaignDraft, "title" | "message" | "image" | "kind" | "recipients">) {
   return JSON.stringify([draft.title.trim(), draft.message, draft.image, draft.kind, [...new Set(draft.recipients)].sort()]);
+}
+
+export function makeVcards(customers: (Pick<CampaignCustomer, "customerName" | "number" | "location"> & { additionalNumbers?: string[]; address?: string })[]) {
+  const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,");
+  return customers.map(customer => {
+    const phones = [customer.number, ...(customer.additionalNumbers ?? [])].map(number => `TEL;TYPE=CELL:+${number}\r\n`).join("");
+    const address = customer.address ? `ADR;TYPE=HOME:;;${escape(customer.address)};;;;\r\n` : "";
+    return `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${escape(customer.customerName)}\r\nN:;${escape(customer.customerName)};;;\r\nORG:${escape(`APH - ${customer.location}`)}\r\n${phones}${address}END:VCARD\r\n`;
+  }).join("");
 }
