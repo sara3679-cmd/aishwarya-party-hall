@@ -3,6 +3,7 @@ import { ensureBookingCustomerColumns, getDb } from "../../../../db";
 import { bookings } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
 import { formatTimeRange12Hour } from "../../../../lib/format-time";
+import { syncHallBookingCalendar } from "../../../../lib/calendar-sync";
 
 function todayInChennai() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -105,29 +106,12 @@ export async function POST(request: Request) {
       status: "confirmed" as const,
     };
 
-    const [cancelledExactSlot] = await db
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(and(
-        eq(bookings.location, location as "Padi" | "Korattur"),
-        eq(bookings.bookingDate, bookingDate),
-        eq(bookings.startTime, startTime),
-        eq(bookings.endTime, endTime),
-        eq(bookings.status, "cancelled"),
-      ))
-      .limit(1);
-
-    let bookingId: number;
-    if (cancelledExactSlot) {
-      bookingId = cancelledExactSlot.id;
-      await db.update(bookings).set(bookingValues).where(eq(bookings.id, bookingId));
-    } else {
-      const result = await db.insert(bookings).values(bookingValues);
-      bookingId = Number(result[0].insertId);
-    }
+    const result = await db.insert(bookings).values(bookingValues);
+    const bookingId = Number(result[0].insertId);
     const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
 
-    return Response.json({ booking }, { status: 201 });
+    const calendarSync = await syncHallBookingCalendar("upsert", booking);
+    return Response.json({ booking, calendarSync }, { status: 201 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Unable to save booking" }, { status: 500 });
   }

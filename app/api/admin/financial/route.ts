@@ -16,13 +16,14 @@ export async function GET(request: Request) {
   const to = url.searchParams.get("to") ?? "2999-12-31";
   const location = url.searchParams.get("location") ?? "All";
   const db = getDb();
-  const bookingConditions = [gte(bookings.bookingDate, from), lte(bookings.bookingDate, to), eq(bookings.status, "confirmed")];
+  const bookingConditions = [gte(bookings.bookingDate, from), lte(bookings.bookingDate, to)];
   if (location !== "All") bookingConditions.push(eq(bookings.location, location as "Padi" | "Korattur"));
   const expenseConditions = [gte(expenses.expenseDate, from), lte(expenses.expenseDate, to)];
   const incomeConditions = [gte(additionalIncome.incomeDate, from), lte(additionalIncome.incomeDate, to)];
   if (location !== "All") expenseConditions.push(or(eq(expenses.location, location as "Padi" | "Korattur"), eq(expenses.location, "General"))!);
   if (location !== "All") incomeConditions.push(or(eq(additionalIncome.location, location as "Padi" | "Korattur"), eq(additionalIncome.location, "General"))!);
-  const bookingRows = await db.select().from(bookings).where(and(...bookingConditions)).orderBy(asc(bookings.bookingDate));
+  const bookingRows = (await db.select().from(bookings).where(and(...bookingConditions)).orderBy(asc(bookings.bookingDate)))
+    .map((booking) => booking.status === "cancelled" ? { ...booking, amount: booking.advanceReceived } : booking);
   const expenseRows = await db.select().from(expenses).where(and(...expenseConditions)).orderBy(asc(expenses.expenseDate));
   const incomeRows = await db.select().from(additionalIncome).where(and(...incomeConditions)).orderBy(asc(additionalIncome.incomeDate));
   return Response.json({ bookings: bookingRows, expenses: expenseRows, income: incomeRows });

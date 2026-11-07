@@ -41,6 +41,14 @@ export async function ensureBookingCustomerColumns() {
       if ((error as { code?: string }).code !== "ER_DUP_FIELDNAME") throw error;
     }
   }
+  const [slotColumns] = await pool!.query<mysql.RowDataPacket[]>("SHOW COLUMNS FROM bookings LIKE 'active_slot_key'");
+  if (!slotColumns.length) {
+    const [oldIndexes] = await pool!.query<mysql.RowDataPacket[]>("SHOW INDEX FROM bookings WHERE Key_name = 'bookings_exact_slot_idx'");
+    if (oldIndexes.length) await pool!.query("ALTER TABLE bookings DROP INDEX bookings_exact_slot_idx");
+    await pool!.query("ALTER TABLE bookings ADD COLUMN active_slot_key VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN status = 'confirmed' THEN CONCAT(location, '|', booking_date, '|', start_time, '|', end_time) ELSE NULL END) STORED");
+  }
+  const [slotIndexes] = await pool!.query<mysql.RowDataPacket[]>("SHOW INDEX FROM bookings WHERE Key_name = 'bookings_active_slot_unique_idx'");
+  if (!slotIndexes.length) await pool!.query("ALTER TABLE bookings ADD UNIQUE INDEX bookings_active_slot_unique_idx (active_slot_key)");
   await pool!.query("UPDATE bookings SET cctv_password = UPPER(SUBSTRING(SHA2(CONCAT(UUID(), RAND()), 256), 1, 8)) WHERE location = 'Padi' AND cctv_password = ''");
   await pool!.query("UPDATE bookings SET cctv_password = '' WHERE location <> 'Padi'");
 }

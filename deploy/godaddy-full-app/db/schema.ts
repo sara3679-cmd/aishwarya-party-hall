@@ -19,7 +19,8 @@ export const bookings = mysqlTable("bookings", {
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
 }, (table) => [
   index("bookings_location_date_idx").on(table.location, table.bookingDate),
-  uniqueIndex("bookings_exact_slot_idx").on(table.location, table.bookingDate, table.startTime, table.endTime),
+  // Runtime setup maintains a unique generated key for confirmed slots only;
+  // cancelled bookings remain available as history when the slot is rebooked.
 ]);
 
 export const expenses = mysqlTable("expenses", {

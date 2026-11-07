@@ -1,7 +1,8 @@
 import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { ensureBookingCctvPasswordColumn, getDb } from "../../../../../db";
-import { bookings } from "../../../../../db/schema";
+import { bookings, expenses } from "../../../../../db/schema";
 import { getStaffSession } from "../../../../admin-auth";
+import { syncHallBookingCalendar } from "../../../../../lib/calendar-sync";
 
 function todayInChennai() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -32,8 +33,44 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   const { id } = await context.params;
   const bookingId = Number(id);
   if (!Number.isInteger(bookingId)) return Response.json({ error: "Invalid booking" }, { status: 400 });
-  await getDb().update(bookings).set({ status: "cancelled" }).where(eq(bookings.id, bookingId));
-  return Response.json({ ok: true });
+  const db = getDb();
+  const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  if (!booking) return Response.json({ error: "Booking not found" }, { status: 404 });
+  if (booking.status === "cancelled") return Response.json({ error: "This booking is already cancelled" }, { status: 409 });
+  let payload: Record<string, unknown> = {};
+  try { payload = await request.json() as Record<string, unknown>; } catch { /* Older clients may send an empty DELETE request. */ }
+  const refundAmount = Number(payload.refundAmount ?? 0);
+  const refundDate = String(payload.refundDate ?? todayInChennai());
+  const paymentMethod = String(payload.paymentMethod ?? "").trim();
+  const refundNote = String(payload.refundNote ?? "").trim();
+  if (!Number.isInteger(refundAmount) || refundAmount < 0 || refundAmount > booking.advanceReceived) {
+    return Response.json({ error: `Refund must be between ₹0 and ₹${booking.advanceReceived.toLocaleString("en-IN")} (amount received)` }, { status: 400 });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(refundDate)) return Response.json({ error: "Enter a valid refund date" }, { status: 400 });
+  if (refundAmount > 0 && !["Cash", "UPI", "Bank transfer", "Other"].includes(paymentMethod)) {
+    return Response.json({ error: "Choose a valid refund payment method" }, { status: 400 });
+  }
+  let refundExpenseId: number | undefined;
+  if (refundAmount > 0) {
+    const [refundExpense] = await db.insert(expenses).values({
+      orderId: "",
+      expenseDate: refundDate,
+      location: booking.location as "Padi" | "Korattur",
+      category: "Booking Refund",
+      description: `Refund for booking ${booking.billNo || booking.id} — ${booking.customerName} — ${paymentMethod}${refundNote ? ` — ${refundNote}` : ""}`,
+      amount: refundAmount,
+    }).returning({ id: expenses.id });
+    refundExpenseId = refundExpense?.id;
+  }
+  try {
+    const [cancelled] = await db.update(bookings).set({ status: "cancelled" }).where(eq(bookings.id, bookingId)).returning({ id: bookings.id });
+    if (!cancelled) throw new Error("Booking could not be cancelled");
+  } catch (error) {
+    if (refundExpenseId) await db.delete(expenses).where(eq(expenses.id, refundExpenseId));
+    throw error;
+  }
+  const calendarSync = await syncHallBookingCalendar("delete", booking);
+  return Response.json({ ok: true, calendarSync, refundAmount, refundExpenseId });
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -77,16 +114,14 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   if (!Number.isFinite(amount) || !Number.isFinite(advanceReceived) || amount < 0 || advanceReceived < 0 || advanceReceived > amount) return Response.json({ error: "Enter valid amount and advance details" }, { status: 400 });
 
   const db = getDb();
+  const [previousBooking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  if (!previousBooking) return Response.json({ error: "Booking not found" }, { status: 404 });
   const [conflict] = await db.select({ id: bookings.id }).from(bookings).where(and(
     eq(bookings.location, location as "Padi" | "Korattur"), eq(bookings.bookingDate, bookingDate), ne(bookings.id, bookingId), ne(bookings.status, "cancelled"), lt(bookings.startTime, endTime), gt(bookings.endTime, startTime),
   )).limit(1);
   if (conflict) return Response.json({ error: "The edited date and time overlap another booking" }, { status: 409 });
 
-  const [cancelledExactSlot] = await db.select({ id: bookings.id }).from(bookings).where(and(
-    eq(bookings.location, location as "Padi" | "Korattur"), eq(bookings.bookingDate, bookingDate), eq(bookings.startTime, startTime), eq(bookings.endTime, endTime), ne(bookings.id, bookingId), eq(bookings.status, "cancelled"),
-  )).limit(1);
-  if (cancelledExactSlot) await db.delete(bookings).where(eq(bookings.id, cancelledExactSlot.id));
-
   const [booking] = await db.update(bookings).set({ location: location as "Padi" | "Korattur", bookingDate, startTime, endTime, billNo, functionName, customerName, mobile, mobile2, address, amount: Math.round(amount), advanceReceived: Math.round(advanceReceived) }).where(eq(bookings.id, bookingId)).returning();
-  return Response.json({ booking });
+  const calendarSync = await syncHallBookingCalendar("upsert", booking, previousBooking);
+  return Response.json({ booking, calendarSync });
 }

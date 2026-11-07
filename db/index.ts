@@ -22,6 +22,10 @@ export function ensureBookingCctvPasswordColumn() {
     const info = await env.DB.prepare("PRAGMA table_info(bookings)").all<{ name: string }>();
     const columns = new Set((info.results ?? []).map((column) => column.name));
     if (!columns.has("cctv_password")) await env.DB.prepare("ALTER TABLE bookings ADD COLUMN cctv_password TEXT DEFAULT '' NOT NULL").run();
+    await env.DB.batch([
+      env.DB.prepare("DROP INDEX IF EXISTS bookings_exact_slot_idx"),
+      env.DB.prepare("CREATE UNIQUE INDEX bookings_exact_slot_idx ON bookings (location, booking_date, start_time, end_time) WHERE status = 'confirmed'"),
+    ]);
     await env.DB.prepare("UPDATE bookings SET cctv_password = upper(substr(hex(randomblob(8)), 1, 8)) WHERE location = 'Padi' AND cctv_password = ''").run();
     await env.DB.prepare("UPDATE bookings SET cctv_password = '' WHERE location <> 'Padi'").run();
   })().catch((error) => { cctvPasswordReady = null; throw error; });

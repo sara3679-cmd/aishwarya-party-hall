@@ -30,7 +30,7 @@ export const bookings = sqliteTable(
       table.bookingDate,
       table.startTime,
       table.endTime,
-    ),
+    ).where(sql`status = 'confirmed'`),
   ],
 );
 
