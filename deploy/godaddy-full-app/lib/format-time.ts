@@ -8,5 +8,5 @@ export function formatTime12Hour(value: string) {
 }
 
 export function formatTimeRange12Hour(startTime: string, endTime: string) {
-  return `${formatTime12Hour(startTime)} – ${formatTime12Hour(endTime)}`;
+  return `${formatTime12Hour(startTime)} – ${formatTime12Hour(endTime)}${endTime < startTime ? " (next day)" : ""}`;
 }

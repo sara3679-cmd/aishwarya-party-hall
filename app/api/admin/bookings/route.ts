@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, gt, gte, lt, ne } from "drizzle-orm";
+import { bookingEndDate, bookingSlotsOverlap, isBookingDate, isBookingTime, shiftBookingDate } from "../../../../lib/booking-slot";
+import { and, asc, desc, eq, gte, lte, ne } from "drizzle-orm";
 import { ensureBookingCctvPasswordColumn, getDb } from "../../../../db";
 import { bookings } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
@@ -65,27 +66,29 @@ export async function POST(request: Request) {
     if (!location || !["Padi", "Korattur"].includes(location) || !bookingDate || !startTime || !endTime || !billNo || !functionName || !customerName || !mobile) {
       return Response.json({ error: "Complete all booking details" }, { status: 400 });
     }
-    if (startTime >= endTime) return Response.json({ error: "End time must be after start time" }, { status: 400 });
+    if (!isBookingDate(bookingDate)) return Response.json({ error: "Enter a valid booking date" }, { status: 400 });
+    if (!isBookingTime(startTime) || !isBookingTime(endTime)) return Response.json({ error: "Enter valid booking times" }, { status: 400 });
+    if (startTime === endTime) return Response.json({ error: "Start and end times must be different" }, { status: 400 });
     if (bookingDate < todayInChennai()) return Response.json({ error: "Past dates cannot be booked" }, { status: 400 });
     if (!/^\+?[0-9]{10,13}$/.test(mobile)) return Response.json({ error: "Enter a valid mobile number" }, { status: 400 });
     if (!Number.isFinite(amount) || !Number.isFinite(advanceReceived) || amount < 0 || advanceReceived < 0) return Response.json({ error: "Enter valid amount details" }, { status: 400 });
     if (advanceReceived > amount) return Response.json({ error: "Advance received cannot exceed total amount" }, { status: 400 });
 
     const db = getDb();
-    const [conflict] = await db
-      .select({ id: bookings.id, startTime: bookings.startTime, endTime: bookings.endTime })
+    const slot = { bookingDate, startTime, endTime };
+    const nearbyBookings = await db
+      .select({ bookingDate: bookings.bookingDate, startTime: bookings.startTime, endTime: bookings.endTime })
       .from(bookings)
       .where(and(
         eq(bookings.location, location as "Padi" | "Korattur"),
-        eq(bookings.bookingDate, bookingDate),
+        gte(bookings.bookingDate, shiftBookingDate(bookingDate, -1)),
+        lte(bookings.bookingDate, bookingEndDate(slot)),
         ne(bookings.status, "cancelled"),
-        lt(bookings.startTime, endTime),
-        gt(bookings.endTime, startTime),
-      ))
-      .limit(1);
+      ));
+    const conflict = nearbyBookings.find((booking) => bookingSlotsOverlap(slot, booking));
 
     if (conflict) {
-      return Response.json({ error: `This hall is already booked from ${formatTimeRange12Hour(conflict.startTime, conflict.endTime)}` }, { status: 409 });
+      return Response.json({ error: `This hall is already booked on ${conflict.bookingDate} from ${formatTimeRange12Hour(conflict.startTime, conflict.endTime)}` }, { status: 409 });
     }
 
     const bookingValues = {

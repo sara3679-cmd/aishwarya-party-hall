@@ -34,7 +34,7 @@ function doPost(e) {
 
     var booking = payload.booking;
     var start = localDateTime(booking.bookingDate, booking.startTime);
-    var end = localDateTime(booking.bookingDate, booking.endTime);
+    var end = localDateTime(booking.bookingDate, booking.endTime, booking.endTime < booking.startTime);
     if (!start || !end || end <= start) return json({ ok: false, error: "invalid time" });
     var description = "Confirmed hall booking.\nFunction: " + booking.functionName +
       "\nHall: " + booking.location;
@@ -60,7 +60,7 @@ function doPost(e) {
 function findExactEvent(calendar, booking) {
   if (!booking || !booking.bookingDate || !booking.startTime || !booking.endTime) return null;
   var start = localDateTime(booking.bookingDate, booking.startTime);
-  var end = localDateTime(booking.bookingDate, booking.endTime);
+  var end = localDateTime(booking.bookingDate, booking.endTime, booking.endTime < booking.startTime);
   if (!start || !end) return null;
   var expectedTitle = booking.title || (booking.functionName + " — Aishwarya Party Hall, " + booking.location);
   var matches = calendar.getEvents(start, end).filter(function (candidate) {
@@ -72,11 +72,11 @@ function findExactEvent(calendar, booking) {
   return matches.length ? matches[0] : null;
 }
 
-function localDateTime(date, time) {
+function localDateTime(date, time, nextDay) {
   var match = String(date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   var clock = String(time || "").match(/^(\d{2}):(\d{2})$/);
   if (!match || !clock) return null;
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(clock[1]), Number(clock[2]));
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + (nextDay ? 1 : 0), Number(clock[1]), Number(clock[2]));
 }
 
 function json(value) {
