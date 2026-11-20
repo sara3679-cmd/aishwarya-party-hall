@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, lte, or } from "drizzle-orm";
-import { ensureExpenseOrderColumn, getDb } from "../../../../db";
+import { ensureBookingCctvPasswordColumn, ensureExpenseOrderColumn, getDb } from "../../../../db";
 import { additionalIncome, bookings, expenses } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
 
@@ -10,6 +10,7 @@ async function requireAdmin(request: Request) {
 
 export async function GET(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
+  await ensureBookingCctvPasswordColumn();
   await ensureExpenseOrderColumn();
   const url = new URL(request.url);
   const from = url.searchParams.get("from") ?? "2000-01-01";

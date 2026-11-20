@@ -67,6 +67,18 @@ async function ensureExtraBackupTables() {
   ]);
 }
 
+async function ensureBackupSchema() {
+  await ensureStaffMobileColumn();
+  await ensureOrderAdditionsTable();
+  await ensureBookingCctvPasswordColumn();
+  await ensureExpenseOrderColumn();
+  await staffRentStore();
+  await decorationStore();
+  await photographyStore();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS page_hits (visit_date TEXT NOT NULL, page_path TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (visit_date,page_path))").run();
+  await ensureExtraBackupTables();
+}
+
 async function databaseSchema(): Promise<{name:string;columns:string[]}[]> {
  const result = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all<{name:string}>();
  const names = (result.results ?? []).map((row:{name:string})=>row.name).filter(applicationTable);
@@ -93,16 +105,8 @@ async function restoreFullDatabase(snapshot:DatabaseSnapshot) {
 
 export async function GET(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
-  await ensureStaffMobileColumn();
-  await ensureOrderAdditionsTable();
-  await ensureBookingCctvPasswordColumn();
-  await ensureExpenseOrderColumn();
-  await staffRentStore();
-  await decorationStore();
-  await photographyStore();
-  await env.DB.prepare("CREATE TABLE IF NOT EXISTS page_hits (visit_date TEXT NOT NULL, page_path TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (visit_date,page_path))").run();
+  await ensureBackupSchema();
   const db = getDb();
-  await ensureExtraBackupTables();
   const [bookingRows, expenseRows, incomeRows, userRows, additionRows, menuResult, cameraResult, draftResult, settingsResult, sendsResult] = await Promise.all([
     db.select().from(bookings).orderBy(asc(bookings.id)),
     db.select().from(expenses).orderBy(asc(expenses.id)),
@@ -144,6 +148,7 @@ export async function POST(request: Request) {
   if (!validateBackup(payload)) return Response.json({ error: "This is not a valid Aishwarya Party Hall database backup" }, { status: 400 });
   if (payload.version === 5 && payload.database) {
     try {
+      await ensureBackupSchema();
       const restoredTables = await restoreFullDatabase(payload.database);
       const count=(name:string)=>payload.database!.tables.find(table=>table.name===name)?.rows.length ?? 0;
       return Response.json({success:true,counts:{bookings:count('bookings'),expenses:count('expenses'),additionalIncome:count('additional_income'),staffUsers:count('staff_users'),orderAdditions:count('order_additions_v5'),tables:restoredTables},fullDatabase:true});

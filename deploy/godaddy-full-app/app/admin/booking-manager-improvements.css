@@ -1,0 +1,57 @@
+.bookingFilterPanel{display:grid;grid-template-columns:minmax(220px,2fr) repeat(4,minmax(120px,1fr)) auto;align-items:end;gap:12px;margin:22px 0;padding:18px;background:#fffaf3;border:1px solid #ead7b3;box-shadow:0 8px 24px rgba(79,36,24,.05)}
+.bookingFilterPanel label{display:grid;gap:6px;color:#694c43;font-size:11px;font-weight:800}
+.bookingFilterPanel input,.bookingFilterPanel select{width:100%;min-height:42px;border:1px solid #d8c8bd;background:#fff;padding:9px 11px;color:#332621;font:inherit}
+.bookingSearchField input{font-size:14px}
+.bookingFilterReset{min-height:42px;border:1px solid #8c0007;border-radius:999px;background:#fff;color:#8c0007;padding:8px 14px;font-weight:800;cursor:pointer}
+.bookingFilterCount{grid-column:1/-1;margin:0;color:#806f67;font-size:12px}
+.bookingQuickFinance{display:flex;align-items:center;gap:10px;margin:18px 0 0;padding:14px 18px;border:1px solid #ead7b3;background:#fffaf3}
+.bookingQuickFinance>div{display:grid;gap:4px;margin-right:auto}
+.bookingQuickFinance>div b{color:#7c090c;font-size:13px}
+.bookingQuickFinance>div span{color:#806f67;font-size:11px}
+.bookingQuickFinance>a{display:inline-flex;min-height:40px;align-items:center;justify-content:center;border:1px solid #8c0007;border-radius:999px;background:#fff;color:#8c0007;padding:8px 14px;font-size:11px;font-weight:800;text-decoration:none;white-space:nowrap}
+.bookingQuickFinance>a:hover{background:#8c0007;color:#fff}
+.adminBookingManagerTable{min-width:1300px!important;table-layout:fixed}
+.adminBookingManagerTable th:nth-child(1),.adminBookingManagerTable td:nth-child(1){width:55px}
+.adminBookingManagerTable th:nth-child(2),.adminBookingManagerTable td:nth-child(2){width:80px}
+.adminBookingManagerTable th:nth-child(3),.adminBookingManagerTable td:nth-child(3){width:140px}
+.adminBookingManagerTable th:nth-child(3),.adminBookingManagerTable td:nth-child(3){min-width:0}
+.adminBookingManagerTable th:nth-child(4),.adminBookingManagerTable td:nth-child(4){width:95px}
+.adminBookingManagerTable th:nth-child(5),.adminBookingManagerTable td:nth-child(5){width:135px}
+.adminBookingManagerTable th:nth-child(6),.adminBookingManagerTable td:nth-child(6){width:210px}
+.adminBookingManagerTable th:nth-child(7),.adminBookingManagerTable td:nth-child(7),.adminBookingManagerTable th:nth-child(8),.adminBookingManagerTable td:nth-child(8),.adminBookingManagerTable th:nth-child(9),.adminBookingManagerTable td:nth-child(9){width:95px}
+.adminBookingManagerTable .moneyColumn,.adminBookingManagerTable .moneyCell{min-width:0}
+.adminBookingManagerTable th:nth-child(10),.adminBookingManagerTable .bookingManagerActionsCell{width:150px;min-width:150px}
+.adminBookingManagerTable .bookingManagerActionsCell{padding:12px 10px}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenu{position:relative;width:100%;text-align:left}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenu>summary{display:flex;min-height:44px;align-items:center;justify-content:center;border-radius:999px;background:#8c0007;color:#fff;padding:8px 12px;font:800 12px/1.2 Arial,sans-serif;list-style:none;cursor:pointer}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenu>summary::-webkit-details-marker{display:none}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenu>summary::marker{content:""}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenu>summary:focus-visible{outline:3px solid #d69b28;outline-offset:2px}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenu[open]>summary{background:#650006}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems{position:absolute;z-index:20;top:calc(100% + 6px);right:0;display:grid;width:190px;gap:4px;padding:7px;border:1px solid #ead7b3;background:#fff;box-shadow:0 10px 24px rgba(40,15,10,.2)}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>a,.bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>button{display:flex;min-height:40px;align-items:center;justify-content:flex-start;width:100%;border:0!important;border-radius:5px!important;background:#fff!important;color:#7c090c!important;padding:9px 10px!important;font:700 12px/1.25 Arial,sans-serif!important;text-align:left;text-decoration:none;white-space:normal;cursor:pointer}
+.bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>a:hover,.bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>button:hover{background:#fff2dc!important}
+.adminBookingManagerTable .customerCell{min-width:0;overflow-wrap:anywhere}
+.overnightDateNotice{display:block;margin-top:3px;color:#76655c;font-size:12px;line-height:1.5}
+.overnightDateNotice.active{color:#7c090c;font-weight:800}
+.bookingPaymentNotice{display:grid;gap:5px;margin:12px 0;padding:13px 15px;border-left:4px solid #d18a19;background:#fff7e8;color:#563c34;line-height:1.45}
+.bookingPaymentNotice span{font-size:13px}
+.paymentHistoryDialog{position:relative;width:min(100%,720px);max-height:calc(100dvh - 36px);overflow:auto;background:#fffaf3;border:1px solid #ead5b2;box-shadow:0 24px 80px rgba(26,10,8,.32);padding:32px;color:#35231f}
+.paymentHistoryDialog h2{font:32px Georgia,serif;color:#7c090c;margin:5px 40px 10px 0}
+.paymentHistoryDialog h3{margin:22px 0 10px;color:#7c090c;font:700 16px Arial,sans-serif}
+.paymentHistoryTotals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:20px 0;padding:14px;background:#fff;border:1px solid #ead7b3;color:#6a554c;font-size:12px}
+.paymentHistoryTotals span,.paymentHistoryTotals b{display:grid;gap:4px}
+.paymentHistoryTotals b{color:#7c090c}
+.paymentHistoryList{display:grid;gap:8px}
+.paymentHistoryList article{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:13px;border:1px solid #eadfd7;background:#fff}
+.paymentHistoryList article>div{display:grid;gap:4px}
+.paymentHistoryList article span,.paymentHistoryList article small{color:#806f67;font-size:12px}
+.recordPaymentForm{display:grid;gap:12px;margin-top:22px;padding-top:18px;border-top:1px solid #ead7b3}
+.recordPaymentForm h3{margin:0}
+.recordPaymentForm label{display:grid;gap:6px;color:#4e3932;font-weight:700}
+.recordPaymentForm input,.recordPaymentForm select{width:100%;min-height:44px;border:1px solid #d8c8bd;background:#fff;padding:9px 11px;font:inherit}
+.recordPaymentForm>button{min-height:46px;border:0;background:#8c0007;color:#fff;padding:0 18px;font-weight:800;cursor:pointer}
+.recordPaymentForm>button:disabled{opacity:.65;cursor:wait}
+@media(max-width:1050px){.bookingFilterPanel{grid-template-columns:repeat(3,minmax(0,1fr))}.bookingSearchField{grid-column:span 2}.bookingFilterCount{grid-column:1/-1}}
+@media(max-width:760px){.bookingQuickFinance{flex-wrap:wrap}.bookingQuickFinance>div{flex-basis:100%;margin:0}.bookingQuickFinance>a{flex:1 1 150px}}
+@media(max-width:620px){.bookingFilterPanel{grid-template-columns:1fr;padding:14px}.bookingSearchField{grid-column:auto}.paymentHistoryDialog{padding:25px 18px}.paymentHistoryDialog h2{font-size:27px}.paymentHistoryTotals{grid-template-columns:1fr}.paymentHistoryList article{grid-template-columns:1fr}.recordPaymentForm .formRow{grid-template-columns:1fr}}

@@ -5,6 +5,7 @@ import { bookings, expenses } from "../../../../../db/schema";
 import { mysqlPool } from "../../../../../db";
 import { getStaffSession } from "../../../../admin-auth";
 import { syncHallBookingCalendar } from "../../../../../lib/calendar-sync";
+import { bookingPaymentHistory } from "../../../../../lib/booking-payments";
 
 function todayInChennai() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -24,7 +25,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!Number.isInteger(bookingId)) return Response.json({ error: "Invalid booking" }, { status: 400 });
   const [booking] = await getDb().select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) return Response.json({ error: "Booking not found" }, { status: 404 });
-  return Response.json({ booking });
+  return Response.json({ booking: { ...booking, paymentHistory: bookingPaymentHistory(booking.paymentHistory, booking.advanceReceived) } });
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -49,7 +50,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     return Response.json({ error: `Refund must be between ₹0 and ₹${booking.advanceReceived.toLocaleString("en-IN")} (amount received)` }, { status: 400 });
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(refundDate)) return Response.json({ error: "Enter a valid refund date" }, { status: 400 });
-  if (refundAmount > 0 && !["Cash", "UPI", "Bank transfer", "Other"].includes(paymentMethod)) {
+  if (refundAmount > 0 && !["Cash", "UPI", "Bank transfer", "Card", "Other"].includes(paymentMethod)) {
     return Response.json({ error: "Choose a valid refund payment method" }, { status: 400 });
   }
   let refundExpenseId: number | undefined;
@@ -83,7 +84,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!Number.isInteger(bookingId)) return Response.json({ error: "Invalid booking" }, { status: 400 });
   const [current] = await getDb().select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!current) return Response.json({ error: "Booking not found" }, { status: 404 });
-  await getDb().update(bookings).set({ advanceReceived: current.amount }).where(eq(bookings.id, bookingId));
+  const balance = current.amount - current.advanceReceived;
+  if (balance <= 0) return Response.json({ booking: current });
+  const history = bookingPaymentHistory(current.paymentHistory, current.advanceReceived);
+  history.push({ amount: balance, date: todayInChennai(), method: "Not specified", note: "Marked received from Booking Expenses & Revenue.", legacy: false });
+  const [result] = await mysqlPool().execute(
+    "UPDATE bookings SET advance_received = ?, payment_history = ? WHERE id = ? AND advance_received = ? AND status = 'confirmed'",
+    [current.amount, JSON.stringify(history), bookingId, current.advanceReceived],
+  );
+  if (Number((result as { affectedRows?: number }).affectedRows ?? 0) !== 1) return Response.json({ error: "This booking changed while recording the payment. Refresh and try again." }, { status: 409 });
   const [booking] = await getDb().select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   return Response.json({ booking });
 }
@@ -108,17 +117,17 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const address = payload.address?.trim() ?? "";
   if (mobile2 && !/^\+?[0-9]{10,13}$/.test(mobile2)) return Response.json({ error: "Enter a valid second mobile number" }, { status: 400 });
   const amount = Number(payload.amount ?? 0);
-  const advanceReceived = Number(payload.advanceReceived ?? 0);
   if (!Number.isInteger(bookingId) || !location || !["Padi", "Korattur"].includes(location) || !bookingDate || !startTime || !endTime || !billNo || !functionName || !customerName || !mobile) return Response.json({ error: "Complete all booking details" }, { status: 400 });
   if (!isBookingDate(bookingDate)) return Response.json({ error: "Enter a valid booking date" }, { status: 400 });
   if (!isBookingTime(startTime) || !isBookingTime(endTime)) return Response.json({ error: "Enter valid booking times" }, { status: 400 });
   if (startTime === endTime) return Response.json({ error: "Start and end times must be different" }, { status: 400 });
   if (!/^\+?[0-9]{10,13}$/.test(mobile)) return Response.json({ error: "Enter a valid mobile number" }, { status: 400 });
-  if (!Number.isFinite(amount) || !Number.isFinite(advanceReceived) || amount < 0 || advanceReceived < 0 || advanceReceived > amount) return Response.json({ error: "Enter valid amount and advance details" }, { status: 400 });
+  if (!Number.isInteger(amount) || amount < 0) return Response.json({ error: "Enter a valid total amount" }, { status: 400 });
 
   const db = getDb();
   const [previousBooking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!previousBooking) return Response.json({ error: "Booking not found" }, { status: 404 });
+  if (amount < previousBooking.advanceReceived) return Response.json({ error: `Total amount cannot be less than the ₹${previousBooking.advanceReceived.toLocaleString("en-IN")} already received` }, { status: 400 });
   const slot = { bookingDate, startTime, endTime };
   const nearbyBookings = await db
     .select({ bookingDate: bookings.bookingDate, startTime: bookings.startTime, endTime: bookings.endTime })
@@ -134,7 +143,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
   if (conflict) return Response.json({ error: "The edited date and time overlap another booking" }, { status: 409 });
 
-  await db.update(bookings).set({ location: location as "Padi" | "Korattur", bookingDate, startTime, endTime, billNo, functionName, customerName, mobile, mobile2, address, amount: Math.round(amount), advanceReceived: Math.round(advanceReceived) }).where(eq(bookings.id, bookingId));
+  await db.update(bookings).set({ location: location as "Padi" | "Korattur", bookingDate, startTime, endTime, billNo, functionName, customerName, mobile, mobile2, address, amount: Math.round(amount) }).where(eq(bookings.id, bookingId));
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   const calendarSync = await syncHallBookingCalendar("upsert", booking, previousBooking);
   return Response.json({ booking, calendarSync });

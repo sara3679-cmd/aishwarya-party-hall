@@ -1,17 +1,19 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { formatTimeRange12Hour } from "../../lib/format-time";
 import { formatDate } from "../../lib/date-format";
 import { BookingReportPreview } from "./booking-report-preview";
 import "./nav-groups.css";
 import "./hall-booking-form.css";
+import "./booking-manager-improvements.css";
 import { AdminReminders } from "./admin-reminders";
 import { CustomerBillPreview } from "./customer-bill-preview";
 import { currentAndFutureBookings } from "../../lib/upcoming-bookings";
 import { makeVcards, normalizePhone } from "../../lib/customer-campaigns";
+import { BOOKING_PAYMENT_METHODS, type BookingPayment } from "../../lib/booking-payments";
 
-type Booking = { id: number; location: string; bookingDate: string; startTime: string; endTime: string; billNo: string; functionName: string; customerName: string; mobile: string; mobile2?: string; address?: string; createdAt?: string; amount?: number; advanceReceived?: number; cctvPassword?: string; status: string };
+type Booking = { id: number; location: string; bookingDate: string; startTime: string; endTime: string; billNo: string; functionName: string; customerName: string; mobile: string; mobile2?: string; address?: string; createdAt?: string; amount?: number; advanceReceived?: number; paymentHistory?: BookingPayment[]; cctvPassword?: string; status: string };
 type Staff = { username: string; role: "admin" | "viewer" | "decorator" | "photographer" };
 function todayInChennai() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
 const functionNames = ["Birthday Party", "Engagement", "Baby Shower", "Naming Ceremony", "Ear Boring", "Puberty", "Betrothal", "Wedding Reception", "Get Together", "Seminar / Training", "Corporate Event", "Small Exhibition", "Other Function"];
@@ -21,6 +23,17 @@ function contactDate(value: string) {
   if (!match) return "";
   const [, year, month, day] = match;
   return `${day}${["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][Number(month) - 1]}${year}`;
+}
+
+function nextCalendarDate(value: string) {
+  const day = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(day.getTime())) return "";
+  day.setUTCDate(day.getUTCDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
+function closeBookingActionMenu(target: HTMLElement) {
+  target.closest("details")?.removeAttribute("open");
 }
 
 function downloadBookingContact(booking: Booking) {
@@ -64,7 +77,27 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
   const [reportPreview, setReportPreview] = useState<{ bookings: Booking[]; includeAmounts: boolean } | null>(null);
   const [customerBill, setCustomerBill] = useState<Booking | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
-  const load = useCallback(() => fetch("/api/admin/bookings").then((response) => response.json()).then((data) => { if (data.error) throw new Error(data.error); setBookings(data.bookings ?? []); setNextBillNumbers(data.nextBillNumbers ?? {}); }).catch((error) => setMessage(error.message)), []);
+  const [paymentBooking, setPaymentBooking] = useState<Booking | null>(null);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("confirmed");
+  const [dateFromFilter, setDateFromFilter] = useState(() => `${todayInChennai().slice(0, 7)}-01`);
+  const [dateToFilter, setDateToFilter] = useState("");
+  const [latestFunctionDate, setLatestFunctionDate] = useState("");
+  const keepDefaultEndDate = useRef(true);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleStart, setScheduleStart] = useState("");
+  const [scheduleEnd, setScheduleEnd] = useState("");
+  const load = useCallback(() => fetch(view === "manager" ? "/api/admin/bookings?history=all" : "/api/admin/bookings").then((response) => response.json()).then((data) => {
+    if (data.error) throw new Error(data.error);
+    const loadedBookings = data.bookings ?? [];
+    setBookings(loadedBookings);
+    setNextBillNumbers(data.nextBillNumbers ?? {});
+    const latestConfirmedDate = loadedBookings.filter((booking: Booking) => booking.status === "confirmed").reduce((latest: string, booking: Booking) => booking.bookingDate > latest ? booking.bookingDate : latest, "");
+    setLatestFunctionDate(latestConfirmedDate);
+    if (keepDefaultEndDate.current) setDateToFilter(latestConfirmedDate);
+  }).catch((error) => setMessage(error.message)), [view]);
 
   function openWhatsAppReport(action: "NEW BOOKING" | "BOOKING UPDATED" | "BOOKING CANCELLED", booking: Booking) {
     const amount = booking.amount ?? 0;
@@ -110,6 +143,11 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
       dateInput.min = editing?.bookingDate && editing.bookingDate < localToday ? editing.bookingDate : localToday;
     }
   }, [staff, editing]);
+  useEffect(() => {
+    setScheduleDate(editing?.bookingDate ?? "");
+    setScheduleStart(editing?.startTime ?? "");
+    setScheduleEnd(editing?.endTime ?? "");
+  }, [editing]);
 
 
 
@@ -163,30 +201,39 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
     load();
   }
 
-  async function receiveBalance(booking: Booking) {
-    const balance = (booking.amount ?? 0) - (booking.advanceReceived ?? 0);
-    if (balance <= 0) return;
-    if (!window.confirm(`Mark the balance of ₹${balance.toLocaleString("en-IN")} as received?`)) return;
-    setSaving(true); setMessage("");
-    const response = await fetch(`/api/admin/bookings/${booking.id}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...booking, advanceReceived: booking.amount ?? 0 }),
-    });
-    const data = await response.json();
-    setSaving(false);
-    if (!response.ok) { setMessage(data.error ?? "Unable to receive balance"); return; }
-    openWhatsAppReport("BOOKING UPDATED", data.booking as Booking);
-    setMessage(`Balance received. Advance updated and WhatsApp report opened. ${calendarSyncMessage(data.calendarSync)}`);
-    load();
+  async function submitPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!paymentBooking) return;
+    const form = event.currentTarget;
+    setPaymentSaving(true); setMessage("");
+    const payload = Object.fromEntries(new FormData(form));
+    try {
+      const response = await fetch(`/api/admin/bookings/${paymentBooking.id}/payments`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await readJson(response);
+      if (!response.ok || !data.booking) { setMessage(typeof data.error === "string" ? data.error : "Unable to record payment"); return; }
+      const updated = data.booking as Booking;
+      setPaymentBooking(updated);
+      setBookings((current) => current.map((booking) => booking.id === updated.id ? updated : booking));
+      form.reset();
+      setMessage("Payment recorded and balance updated.");
+    } catch { setMessage("Unable to contact the payment service. Please try again."); }
+    finally { setPaymentSaving(false); }
   }
 
   function openExpenseForm(booking: Booking) {
     const query = new URLSearchParams({
-      bookingId: String(booking.id), billNo: booking.billNo || "—", expenseDate: booking.bookingDate,
+      entry: "booking-expense", bookingId: String(booking.id), billNo: booking.billNo || "—", expenseDate: booking.bookingDate,
       location: booking.location, functionName: booking.functionName, customerName: booking.customerName,
     });
     window.location.href = `/admin/financial?${query.toString()}#expense-form`;
+  }
+
+  function openRevenueForm(booking: Booking) {
+    const query = new URLSearchParams({
+      entry: "booking-revenue", bookingId: String(booking.id), billNo: booking.billNo || "—", incomeDate: booking.bookingDate,
+      location: booking.location, functionName: booking.functionName, customerName: booking.customerName,
+    });
+    window.location.href = `/admin/financial?${query.toString()}#income-form`;
   }
 
   function openReportPreview(includeAmounts: boolean) {
@@ -224,6 +271,23 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
   const totalValue = monthBookings.reduce((sum, item) => sum + (item.amount ?? 0), 0);
   const padiValue = padiMonth.reduce((sum, item) => sum + (item.amount ?? 0), 0);
   const koratturValue = koratturMonth.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const searchTerm = bookingSearch.trim().toLocaleLowerCase("en-IN");
+  const matchesBookingFilters = (item: Booking) => {
+    const searchable = [item.billNo, item.bookingDate, item.location, item.functionName, item.customerName, item.mobile, item.mobile2, item.address].join(" ").toLocaleLowerCase("en-IN");
+    return (!searchTerm || searchable.includes(searchTerm))
+      && (locationFilter === "all" || item.location === locationFilter)
+      && (!dateFromFilter || item.bookingDate >= dateFromFilter)
+      && (!dateToFilter || item.bookingDate <= dateToFilter);
+  };
+  const filteredConfirmed = confirmed.filter(matchesBookingFilters);
+  const filteredCancelled = cancelledBookings.filter(matchesBookingFilters);
+  const showConfirmed = statusFilter !== "cancelled";
+  const showCancelled = staff.role === "admin" && statusFilter !== "confirmed";
+  const displayStart = scheduleStart || editing?.startTime || "17:00";
+  const displayEnd = scheduleEnd || editing?.endTime || "22:00";
+  const displayDate = scheduleDate || editing?.bookingDate || "";
+  const isOvernight = displayEnd < displayStart;
+  const endDate = isOvernight && displayDate ? nextCalendarDate(displayDate) : displayDate;
 
   if (view === "dashboard") return <main className="adminPage adminDashboardPage">
     <header className="adminHeader dashboardHeader"><div><p className="kicker">Private administration</p><h1>Aishwarya Administration</h1><p className="staffRole">Signed in as {staff.username} · {staff.role === "admin" ? "Administrator" : staff.role === "decorator" ? "Decorator · Viewer access" : staff.role === "photographer" ? "Photographer · Viewer access" : "Read-only viewer"}</p></div></header>
@@ -253,22 +317,33 @@ export function BookingWorkspace({ view = "dashboard" }: { view?: "dashboard" | 
 <div className="formRow"><label>Mobile Number 1<input name="mobile" required type="tel" pattern="[+]?[0-9]{10,13}" defaultValue={editing?.mobile} autoComplete="tel" /></label><label>Mobile Number 2 (optional)<input name="mobile2" type="tel" pattern="[+]?[0-9]{10,13}" defaultValue={editing?.mobile2 ?? ""} /></label></div>
 </fieldset>
 <fieldset className="hallBookingGroup"><legend>Function Details</legend>
-<div className="formRow"><label>Location<select name="location" value={selectedLocation ?? editing?.location ?? "Padi"} onChange={(event) => { setSelectedLocation(event.target.value); if (!editing) setBillOverride(null); }}><option>Padi</option><option>Korattur</option></select></label><label>Booking Date<input type="date" name="bookingDate" required defaultValue={editing?.bookingDate} /></label></div>
-<div className="formRow"><label>Start Time<input type="time" name="startTime" required defaultValue={editing?.startTime ?? "17:00"} /></label><label>End Time<input type="time" name="endTime" required aria-describedby="overnight-booking-help" defaultValue={editing?.endTime ?? "22:00"} /></label></div>
-<small id="overnight-booking-help">An end time earlier than the start time is on the next day.</small>
+<div className="formRow"><label>Location<select name="location" value={selectedLocation ?? editing?.location ?? "Padi"} onChange={(event) => { setSelectedLocation(event.target.value); if (!editing) setBillOverride(null); }}><option>Padi</option><option>Korattur</option></select></label><label>Booking Date<input type="date" name="bookingDate" required value={scheduleDate || editing?.bookingDate || ""} onChange={(event) => setScheduleDate(event.target.value)} /></label></div>
+<div className="formRow"><label>Start Time<input type="time" name="startTime" required value={scheduleStart || editing?.startTime || "17:00"} onChange={(event) => setScheduleStart(event.target.value)} /></label><label>End Time<input type="time" name="endTime" required aria-describedby="overnight-booking-help" value={scheduleEnd || editing?.endTime || "22:00"} onChange={(event) => setScheduleEnd(event.target.value)} /></label></div>
+<small id="overnight-booking-help" className={isOvernight ? "overnightDateNotice active" : "overnightDateNotice"}>{isOvernight ? <>Overnight booking · Ends {endDate ? formatDate(endDate) : "the following day"}.</> : "The booking ends on the selected date."}</small>
 <div className="formRow"><label>Bill number<input name="billNo" required placeholder="e.g. APH-001" value={billOverride ?? editing?.billNo ?? nextBillNumbers[selectedLocation ?? "Padi"] ?? ""} onChange={(event) => setBillOverride(event.target.value)} /></label><label>Function name<select name="functionName" required defaultValue={editing?.functionName ?? "Birthday Party"}>{editing?.functionName && !functionNames.includes(editing.functionName) && <option value={editing.functionName}>{editing.functionName}</option>}{functionNames.map((name) => <option key={name} value={name}>{name}</option>)}</select></label></div>
 </fieldset>
-<fieldset className="hallBookingGroup"><legend>Amount Details</legend><div className="formRow"><label>Total Amount (₹)<input name="amount" required type="number" min="0" step="1" defaultValue={editing?.amount ?? 0} /></label><label>Advance Amount (₹)<input name="advanceReceived" required type="number" min="0" step="1" defaultValue={editing?.advanceReceived ?? 0} /></label></div></fieldset><button disabled={saving}>{saving ? "Saving…" : editing ? "Update booking" : "Save booking"}</button>{editing && <a className="cancelEdit formCancelLink" href="/admin/bookings">Cancel editing</a>}{message && <p className="adminMessage">{message}</p>}</form></section> : <section className="adminLogin"><h2>Administrator only</h2><p>Viewer accounts cannot add or edit bookings.</p><a href="/admin/bookings">Return to Booking Manager</a></section>}
+<fieldset className="hallBookingGroup"><legend>Amount &amp; Payment Details</legend><label>Total Amount (₹)<input name="amount" required type="number" min="0" step="1" defaultValue={editing?.amount ?? 0} /></label>{editing ? <div className="bookingPaymentNotice"><b>Received so far: ₹{(editing.advanceReceived ?? 0).toLocaleString("en-IN")}</b><span>To record another instalment with its date and method, use the Booking Manager.</span><a href="/admin/bookings">Open Booking Manager</a></div> : <><div className="formRow"><label>Advance received (₹)<input name="advanceReceived" required type="number" min="0" step="1" defaultValue="0" /></label><label>Payment date<input name="paymentDate" type="date" defaultValue={todayInChennai()} /></label></div><label>Payment method<select name="paymentMethod" defaultValue="Cash">{BOOKING_PAYMENT_METHODS.map((method) => <option key={method}>{method}</option>)}</select></label></>}</fieldset><button disabled={saving}>{saving ? "Saving…" : editing ? "Update booking" : "Save booking"}</button>{editing && <a className="cancelEdit formCancelLink" href="/admin/bookings">Cancel editing</a>}{message && <p className="adminMessage">{message}</p>}</form></section> : <section className="adminLogin"><h2>Administrator only</h2><p>Viewer accounts cannot add or edit bookings.</p><a href="/admin/bookings">Return to Booking Manager</a></section>}
   </main>;
 
   return <main className="adminPage bookingManagerPage">
     <header className="adminHeader"><div><p className="kicker">Aishwarya Party Hall</p><h1>Booking Manager</h1><p className="staffRole">Confirmed bookings, payments and customer records</p></div>{staff.role === "admin" ? <div className="adminHeaderActions bookingAdminNav"><a href="/admin/bookings/new">Hall Booking</a><a className="currentNavLink" href="/admin/bookings">Booking Manager</a><a href="/admin/financial">New Expenses &amp; Revenue</a><a href="/admin/reports/bookings">Expenses &amp; Revenue</a><a href="/admin/financial/profit-loss">Profit &amp; Loss</a><a href="/admin">Admin Home</a></div> : <div className="adminHeaderActions bookingAdminNav"><a className="currentNavLink" href="/admin/bookings">Booking Manager</a><a href="/admin">Admin Home</a></div>}</header>
     <section className="bookingManagerSummary"><article><small>All Locations · Current month</small><b>{monthBookings.length} <em>Bookings</em></b>{staff.role === "admin" && <span>₹{totalValue.toLocaleString("en-IN")}</span>}</article><article><small>Padi · Current month</small><b>{padiMonth.length} <em>Bookings</em></b>{staff.role === "admin" && <span>₹{padiValue.toLocaleString("en-IN")}</span>}</article><article><small>Korattur · Current month</small><b>{koratturMonth.length} <em>Bookings</em></b>{staff.role === "admin" && <span>₹{koratturValue.toLocaleString("en-IN")}</span>}</article></section>
-    <section className="bookingReport"><div className="reportHead"><div><p className="kicker">Confirmed booking register</p><h2>{staff.role === "admin" ? "Bookings & payment summary" : "Booking details"}</h2><p>The newest saved booking for Padi and Korattur is highlighted · WhatsApp reports include today and future bookings only</p></div><div className="reportHeadActions">{staff.role === "admin" ? <><button className="whatsappReportButton withoutAmount" onClick={() => openReportPreview(false)}>WhatsApp</button><button className="whatsappReportButton" onClick={() => openReportPreview(true)}>WhatsApp + Amount</button></> : <button className="whatsappReportButton withoutAmount" onClick={() => openReportPreview(false)}>WhatsApp</button>}<button onClick={() => window.print()}>Print</button></div></div><div className="reportTableWrap bookingManagerTableWrap"><table className="bookingManagerTable"><thead><tr><th>S.No.</th><th>Bill No.</th><th className="dateColumn">Date &amp; time</th><th>Location</th><th>Function name</th><th>Customer details</th>{staff.role === "admin" && <><th className="moneyColumn">Amount</th><th className="moneyColumn">Advance</th><th className="moneyColumn">Balance</th><th>Actions</th></>}</tr></thead><tbody>{confirmed.map((item) => { const balance = (item.amount ?? 0) - (item.advanceReceived ?? 0); const isLatest = latestIds.get(item.location) === item.id; return <tr key={item.id} className={isLatest ? `latestSavedEntry ${item.location === "Padi" ? "latestPadi" : "latestKorattur"}` : ""}><td>{serialNumbers.get(item.id)}{isLatest && <span className="latestBookingTag">Latest {item.location}</span>}</td><td className="billCell">{item.billNo || "—"}</td><td className="dateCell"><b>{formatDate(item.bookingDate)}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td><span className={`locationBadge ${item.location.toLowerCase()}`}>{item.location}</span></td><td className="functionCell">{item.functionName}</td><td className="customerCell"><b>{item.customerName}</b><a href={`tel:${item.mobile}`}>{item.mobile}</a>{item.mobile2 && <a href={`tel:${item.mobile2}`}>{item.mobile2}</a>}{item.address && <small>{item.address}</small>}{staff.role === "admin" && normalizePhone(item.mobile) && <button className="customerContactDownload" onClick={() => downloadBookingContact(item)}>Download contact</button>}</td>{staff.role === "admin" && <><td className="moneyCell">₹{(item.amount ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell advanceCell">₹{(item.advanceReceived ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell balanceCell"><b>₹{balance.toLocaleString("en-IN")}</b></td><td><div className="bookingActions"><a href={`/admin/bookings/new?editBooking=${item.id}`}>Edit</a><button onClick={() => setCustomerBill(item)}>Customer Bill</button><button onClick={() => setCancellingBooking(item)}>Cancel Booking</button></div></td></>}</tr>; })}{!confirmed.length && <tr><td colSpan={staff.role === "admin" ? 10 : 6}>No confirmed bookings found.</td></tr>}</tbody></table></div>{message && <p className="adminMessage">{message}</p>}</section>
-    {staff.role === "admin" && <section className="bookingReport cancelledBookingReport"><div className="reportHead"><div><p className="kicker">Booking history</p><h2>Cancelled bookings</h2><p>Cancelled records stay here for reference. Refund entries appear under Hall Expenses.</p></div></div><div className="reportTableWrap"><table><thead><tr><th>Bill No.</th><th>Date &amp; time</th><th>Location</th><th>Function</th><th>Customer</th><th>Paid before cancellation</th></tr></thead><tbody>{cancelledBookings.map((item) => <tr key={item.id}><td>{item.billNo || "—"}</td><td>{formatDate(item.bookingDate)}<small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td>{item.location}</td><td>{item.functionName}</td><td>{item.customerName}<small>{item.mobile}</small></td><td>{`₹${(item.advanceReceived ?? 0).toLocaleString("en-IN")}`}</td></tr>)}{!cancelledBookings.length && <tr><td colSpan={6}>No cancelled bookings this month.</td></tr>}</tbody></table></div></section>}
+    {staff.role === "admin" && <section className="bookingQuickFinance" aria-label="Common financial entries"><div><b>Common expenses &amp; revenue</b><span>Record shared entries that are not tied to a specific function.</span></div><a href="/admin/financial?entry=common-expense#expense-form">Add common expense</a><a href="/admin/financial?entry=common-revenue#income-form">Add common revenue</a></section>}
+    <section className="bookingFilterPanel" aria-label="Search and filter bookings">
+      <label className="bookingSearchField">Search bookings<input type="search" value={bookingSearch} onChange={(event) => setBookingSearch(event.target.value)} placeholder="Bill number, customer, mobile, function…" /></label>
+      <label>Location<select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)}><option value="all">All locations</option><option value="Padi">Padi</option><option value="Korattur">Korattur</option></select></label>
+      {staff.role === "admin" && <label>Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="confirmed">Confirmed</option><option value="cancelled">Cancelled</option><option value="all">All bookings</option></select></label>}
+      <label>From date<input type="date" value={dateFromFilter} onChange={(event) => setDateFromFilter(event.target.value)} /></label>
+      <label>To date<input type="date" value={dateToFilter} onChange={(event) => { keepDefaultEndDate.current = false; setDateToFilter(event.target.value); }} /></label>
+      <button type="button" className="bookingFilterReset" onClick={() => { setBookingSearch(""); setLocationFilter("all"); setStatusFilter("confirmed"); setDateFromFilter(`${todayInChennai().slice(0, 7)}-01`); keepDefaultEndDate.current = true; setDateToFilter(latestFunctionDate); }}>Reset filters</button>
+      <p className="bookingFilterCount">{(showConfirmed ? filteredConfirmed.length : 0) + (showCancelled ? filteredCancelled.length : 0)} matching booking{(showConfirmed ? filteredConfirmed.length : 0) + (showCancelled ? filteredCancelled.length : 0) === 1 ? "" : "s"}</p>
+    </section>
+    {showConfirmed && <section className="bookingReport"><div className="reportHead"><div><p className="kicker">Confirmed booking register</p><h2>{staff.role === "admin" ? "Bookings & payment summary" : "Booking details"}</h2><p>Search any saved booking by customer, bill number, mobile, function, location or date. WhatsApp reports include today and future bookings only.</p></div><div className="reportHeadActions">{staff.role === "admin" ? <><button className="whatsappReportButton withoutAmount" onClick={() => openReportPreview(false)}>WhatsApp</button><button className="whatsappReportButton" onClick={() => openReportPreview(true)}>WhatsApp + Amount</button></> : <button className="whatsappReportButton withoutAmount" onClick={() => openReportPreview(false)}>WhatsApp</button>}<button onClick={() => window.print()}>Print</button></div></div><div className="reportTableWrap bookingManagerTableWrap"><table className={`bookingManagerTable ${staff.role === "admin" ? "adminBookingManagerTable" : ""}`}><thead><tr><th>S.No.</th><th>Bill No.</th><th className="dateColumn">Date &amp; time</th><th>Location</th><th>Function name</th><th>Customer details</th>{staff.role === "admin" && <><th className="moneyColumn">Amount</th><th className="moneyColumn">Received</th><th className="moneyColumn">Balance</th><th>Actions</th></>}</tr></thead><tbody>{filteredConfirmed.map((item) => { const balance = (item.amount ?? 0) - (item.advanceReceived ?? 0); const isLatest = latestIds.get(item.location) === item.id; return <tr key={item.id} className={isLatest ? `latestSavedEntry ${item.location === "Padi" ? "latestPadi" : "latestKorattur"}` : ""}><td>{serialNumbers.get(item.id)}{isLatest && <span className="latestBookingTag">Latest {item.location}</span>}</td><td className="billCell">{item.billNo || "—"}</td><td className="dateCell"><b>{formatDate(item.bookingDate)}</b><small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td><span className={`locationBadge ${item.location.toLowerCase()}`}>{item.location}</span></td><td className="functionCell">{item.functionName}</td><td className="customerCell"><b>{item.customerName}</b><a href={`tel:${item.mobile}`}>{item.mobile}</a>{item.mobile2 && <a href={`tel:${item.mobile2}`}>{item.mobile2}</a>}{item.address && <small>{item.address}</small>}{staff.role === "admin" && normalizePhone(item.mobile) && <button className="customerContactDownload" onClick={() => downloadBookingContact(item)}>Download contact</button>}</td>{staff.role === "admin" && <><td className="moneyCell">₹{(item.amount ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell advanceCell">₹{(item.advanceReceived ?? 0).toLocaleString("en-IN")}</td><td className="moneyCell balanceCell"><b>₹{balance.toLocaleString("en-IN")}</b></td><td className="bookingManagerActionsCell"><details className="bookingActionMenu"><summary>Manage</summary><div className="bookingActionMenuItems"><a href={`/admin/bookings/new?editBooking=${item.id}`}>Edit booking</a><button onClick={(event) => { closeBookingActionMenu(event.currentTarget); setMessage(""); setPaymentBooking(item); }}>{balance > 0 ? "Payments / Add" : "Payment history"}</button><button onClick={(event) => { closeBookingActionMenu(event.currentTarget); setCustomerBill(item); }}>Customer bill</button><button onClick={(event) => { closeBookingActionMenu(event.currentTarget); openExpenseForm(item); }}>Booking expense</button><button onClick={(event) => { closeBookingActionMenu(event.currentTarget); openRevenueForm(item); }}>Booking revenue</button><button onClick={(event) => { closeBookingActionMenu(event.currentTarget); setCancellingBooking(item); }}>Cancel booking</button></div></details></td></>}</tr>; })}{!filteredConfirmed.length && <tr><td colSpan={staff.role === "admin" ? 10 : 6}>No confirmed bookings match these filters.</td></tr>}</tbody></table></div>{message && <p className="adminMessage">{message}</p>}</section>}
+    {showCancelled && <section className="bookingReport cancelledBookingReport"><div className="reportHead"><div><p className="kicker">Booking history</p><h2>Cancelled bookings</h2><p>Cancelled records stay here for reference. Refund entries appear under Hall Expenses.</p></div></div><div className="reportTableWrap"><table><thead><tr><th>Bill No.</th><th>Date &amp; time</th><th>Location</th><th>Function</th><th>Customer</th><th>Paid before cancellation</th></tr></thead><tbody>{filteredCancelled.map((item) => <tr key={item.id}><td>{item.billNo || "—"}</td><td>{formatDate(item.bookingDate)}<small>{formatTimeRange12Hour(item.startTime, item.endTime)}</small></td><td>{item.location}</td><td>{item.functionName}</td><td>{item.customerName}<small>{item.mobile}</small></td><td>{`₹${(item.advanceReceived ?? 0).toLocaleString("en-IN")}`}</td></tr>)}{!filteredCancelled.length && <tr><td colSpan={6}>No cancelled bookings match these filters.</td></tr>}</tbody></table></div></section>}
     <p className="adminPrivacy">Customer names and mobile numbers are private and never shown on the public calendar.</p>
     {reportPreview && <BookingReportPreview bookings={reportPreview.bookings} includeAmounts={reportPreview.includeAmounts} onClose={() => setReportPreview(null)} />}
     {staff.role === "admin" && customerBill && <CustomerBillPreview booking={customerBill} onClose={() => setCustomerBill(null)} />}
-    {staff.role === "admin" && cancellingBooking && <div className="cancelBookingOverlay" role="presentation"><section className="cancelBookingDialog" role="dialog" aria-modal="true" aria-labelledby="cancel-booking-title"><button className="cancelBookingClose" type="button" aria-label="Close" onClick={() => setCancellingBooking(null)}>×</button><p className="kicker">Booking cancellation</p><h2 id="cancel-booking-title">Cancel {cancellingBooking.billNo || "booking"}?</h2><p>{cancellingBooking.customerName} · {formatDate(cancellingBooking.bookingDate)} · {cancellingBooking.location}</p><p className="cancelBookingPaid">Amount received: ₹{(cancellingBooking.advanceReceived ?? 0).toLocaleString("en-IN")}</p><form onSubmit={cancel}><label>Refund amount (₹)<input name="refundAmount" type="number" min="0" max={cancellingBooking.advanceReceived ?? 0} step="1" defaultValue="0" required /></label><div className="formRow"><label>Refund date<input name="refundDate" type="date" defaultValue={todayInChennai()} required /></label><label>Payment method<select name="paymentMethod" defaultValue="Cash"><option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Other</option></select></label></div><label>Note (optional)<input name="refundNote" maxLength={180} placeholder="Transaction reference or note" /></label><p className="cancelBookingHelp">The refund is recorded under Hall Expenses. Enter ₹0 if no money is being returned.</p><div className="cancelBookingButtons"><button type="button" onClick={() => setCancellingBooking(null)}>Keep booking</button><button type="submit">Confirm cancellation</button></div></form></section></div>}
+    {staff.role === "admin" && paymentBooking && <div className="cancelBookingOverlay" role="presentation"><section className="paymentHistoryDialog" role="dialog" aria-modal="true" aria-labelledby="payment-history-title"><button className="cancelBookingClose" type="button" aria-label="Close payment history" onClick={() => { setPaymentBooking(null); setMessage(""); }}>×</button><p className="kicker">Booking payments</p><h2 id="payment-history-title">{paymentBooking.billNo || "Booking"} · {paymentBooking.customerName}</h2><p>{formatDate(paymentBooking.bookingDate)} · {paymentBooking.location} · {formatTimeRange12Hour(paymentBooking.startTime, paymentBooking.endTime)}</p><div className="paymentHistoryTotals"><span>Total ₹{(paymentBooking.amount ?? 0).toLocaleString("en-IN")}</span><span>Received ₹{(paymentBooking.advanceReceived ?? 0).toLocaleString("en-IN")}</span><b>Balance ₹{Math.max(0, (paymentBooking.amount ?? 0) - (paymentBooking.advanceReceived ?? 0)).toLocaleString("en-IN")}</b></div><h3>Payment history</h3><div className="paymentHistoryList">{(paymentBooking.paymentHistory ?? []).map((payment, index) => <article key={`${payment.date}-${payment.amount}-${index}`}><div><b>₹{payment.amount.toLocaleString("en-IN")}</b><span>{payment.date ? formatDate(payment.date) : "Previously recorded"}</span></div><div><b>{payment.method}</b>{payment.note && <small>{payment.note}</small>}</div></article>)}{!(paymentBooking.paymentHistory?.length) && <p>No payments recorded yet.</p>}</div>{paymentBooking.status === "confirmed" && (paymentBooking.amount ?? 0) > (paymentBooking.advanceReceived ?? 0) && <form className="recordPaymentForm" onSubmit={submitPayment}><h3>Record an instalment</h3><div className="formRow"><label>Amount received (₹)<input name="amount" type="number" min="1" max={(paymentBooking.amount ?? 0) - (paymentBooking.advanceReceived ?? 0)} step="1" required /></label><label>Payment date<input name="date" type="date" defaultValue={todayInChennai()} required /></label></div><div className="formRow"><label>Payment method<select name="method" defaultValue="Cash">{BOOKING_PAYMENT_METHODS.map((method) => <option key={method}>{method}</option>)}</select></label><label>Note (optional)<input name="note" maxLength={180} placeholder="Transaction reference or details" /></label></div>{message && <p className="adminMessage">{message}</p>}<button type="submit" disabled={paymentSaving}>{paymentSaving ? "Saving payment…" : "Save payment"}</button></form>}{paymentBooking.status !== "confirmed" && <p className="bookingPaymentNotice">This booking is cancelled. Payment history is read-only.</p>}{(paymentBooking.amount ?? 0) <= (paymentBooking.advanceReceived ?? 0) && paymentBooking.status === "confirmed" && <p className="bookingPaymentNotice">This booking is fully paid.</p>}</section></div>}
+    {staff.role === "admin" && cancellingBooking && <div className="cancelBookingOverlay" role="presentation"><section className="cancelBookingDialog" role="dialog" aria-modal="true" aria-labelledby="cancel-booking-title"><button className="cancelBookingClose" type="button" aria-label="Close" onClick={() => setCancellingBooking(null)}>×</button><p className="kicker">Booking cancellation</p><h2 id="cancel-booking-title">Cancel {cancellingBooking.billNo || "booking"}?</h2><p>{cancellingBooking.customerName} · {formatDate(cancellingBooking.bookingDate)} · {cancellingBooking.location}</p><p className="cancelBookingPaid">Amount received: ₹{(cancellingBooking.advanceReceived ?? 0).toLocaleString("en-IN")}</p><form onSubmit={cancel}><label>Refund amount (₹)<input name="refundAmount" type="number" min="0" max={cancellingBooking.advanceReceived ?? 0} step="1" defaultValue="0" required /></label><div className="formRow"><label>Refund date<input name="refundDate" type="date" defaultValue={todayInChennai()} required /></label><label>Payment method<select name="paymentMethod" defaultValue="Cash"><option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Card</option><option>Other</option></select></label></div><label>Note (optional)<input name="refundNote" maxLength={180} placeholder="Transaction reference or note" /></label><p className="cancelBookingHelp">The refund is recorded under Hall Expenses. Enter ₹0 if no money is being returned.</p><div className="cancelBookingButtons"><button type="button" onClick={() => setCancellingBooking(null)}>Keep booking</button><button type="submit">Confirm cancellation</button></div></form></section></div>}
   </main>;
 }

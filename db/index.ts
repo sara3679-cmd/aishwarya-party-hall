@@ -22,6 +22,7 @@ export function ensureBookingCctvPasswordColumn() {
     const info = await env.DB.prepare("PRAGMA table_info(bookings)").all<{ name: string }>();
     const columns = new Set((info.results ?? []).map((column) => column.name));
     if (!columns.has("cctv_password")) await env.DB.prepare("ALTER TABLE bookings ADD COLUMN cctv_password TEXT DEFAULT '' NOT NULL").run();
+    if (!columns.has("payment_history")) await env.DB.prepare("ALTER TABLE bookings ADD COLUMN payment_history TEXT DEFAULT '[]' NOT NULL").run();
     await env.DB.batch([
       env.DB.prepare("DROP INDEX IF EXISTS bookings_exact_slot_idx"),
       env.DB.prepare("CREATE UNIQUE INDEX bookings_exact_slot_idx ON bookings (location, booking_date, start_time, end_time) WHERE status = 'confirmed'"),

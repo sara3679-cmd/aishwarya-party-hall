@@ -1,5 +1,5 @@
 import { exportFullDatabase, restoreFullDatabase } from "../../../../db/full-backup";
-import { ensureStaffMobileColumn } from "../../../../db";
+import { ensureBookingCustomerColumns, ensureStaffMobileColumn } from "../../../../db";
 import { decorationStore } from "../../../../db/decoration-store";
 import { validSnapshot, type DatabaseSnapshot } from "../../../../lib/full-database-backup";
 import { asc, sql } from "drizzle-orm";
@@ -78,6 +78,7 @@ async function ensureExtraBackupTables() {
 
 export async function GET(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
+  await ensureBookingCustomerColumns();
   await ensureStaffMobileColumn();
   const db = getDb();
   await db.execute(sql`CREATE TABLE IF NOT EXISTS catering_menu_items (id VARCHAR(120) PRIMARY KEY, name VARCHAR(255) NOT NULL, category VARCHAR(80) NOT NULL, meal JSON NOT NULL, type VARCHAR(20) NOT NULL, rate VARCHAR(50) NOT NULL DEFAULT '', sides JSON NOT NULL, photo_path VARCHAR(500) NOT NULL DEFAULT '')`);
@@ -113,6 +114,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!await requireAdmin(request)) return Response.json({ error: "Administrator access required" }, { status: 403 });
+  await ensureBookingCustomerColumns();
   let payload: unknown;
   try {
     payload = await request.json();

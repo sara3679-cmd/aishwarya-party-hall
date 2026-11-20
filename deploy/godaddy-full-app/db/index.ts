@@ -32,7 +32,7 @@ export async function ensureBookingCustomerColumns() {
   getDb();
   const [rows] = await pool!.query<mysql.RowDataPacket[]>("SHOW COLUMNS FROM bookings");
   const columns = new Set(rows.map(row => String(row.Field)));
-  for (const [name, definition] of [["mobile2", "VARCHAR(64) NOT NULL DEFAULT ''"], ["address", "VARCHAR(2000) NOT NULL DEFAULT ''"], ["cctv_password", "VARCHAR(32) NOT NULL DEFAULT ''"]]) {
+  for (const [name, definition] of [["mobile2", "VARCHAR(64) NOT NULL DEFAULT ''"], ["address", "VARCHAR(2000) NOT NULL DEFAULT ''"], ["cctv_password", "VARCHAR(32) NOT NULL DEFAULT ''"], ["payment_history", "LONGTEXT NULL"]]) {
     if (columns.has(name)) continue;
     try {
       await pool!.query(`ALTER TABLE bookings ADD COLUMN ${name} ${definition}`);

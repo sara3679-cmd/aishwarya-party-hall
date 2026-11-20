@@ -50,6 +50,10 @@ export async function POST(request: Request) {
     if (Number(expenseOrderColumns[0]?.column_count ?? 0) === 0) {
       await connection.query("ALTER TABLE expenses ADD COLUMN order_id VARCHAR(100) NOT NULL DEFAULT ''");
     }
+    const [paymentHistoryColumns] = await connection.query<mysql.RowDataPacket[]>(
+      "SELECT COUNT(*) AS column_count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings' AND COLUMN_NAME = 'payment_history'",
+    );
+    if (Number(paymentHistoryColumns[0]?.column_count ?? 0) === 0) await connection.query("ALTER TABLE bookings ADD COLUMN payment_history LONGTEXT NULL");
     await connection.query(`CREATE TABLE IF NOT EXISTS offline_sync_backups (
       id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
       synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -79,8 +83,8 @@ export async function POST(request: Request) {
     await connection.query("DELETE FROM catering_menu_items");
 
     for (const row of payload.data.bookings) await connection.execute(
-      "INSERT INTO bookings (id, location, booking_date, start_time, end_time, bill_no, function_name, customer_name, mobile, amount, advance_received, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [row.id, row.location, row.bookingDate, row.startTime, row.endTime, row.billNo ?? "", row.functionName, row.customerName, row.mobile, row.amount ?? 0, row.advanceReceived ?? 0, row.status ?? "confirmed", row.createdAt],
+      "INSERT INTO bookings (id, location, booking_date, start_time, end_time, bill_no, function_name, customer_name, mobile, amount, advance_received, payment_history, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [row.id, row.location, row.bookingDate, row.startTime, row.endTime, row.billNo ?? "", row.functionName, row.customerName, row.mobile, row.amount ?? 0, row.advanceReceived ?? 0, typeof row.paymentHistory === "string" ? row.paymentHistory : JSON.stringify(row.paymentHistory ?? []), row.status ?? "confirmed", row.createdAt],
     );
     for (const row of payload.data.expenses) await connection.execute(
       "INSERT INTO expenses (id, order_id, expense_date, location, category, description, amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",

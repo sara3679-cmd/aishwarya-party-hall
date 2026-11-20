@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, cpSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, cpSync, mkdtempSync } from "node:fs";
 import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
@@ -21,6 +22,20 @@ function loadPrivateEnvironment() {
     const key = trimmed.slice(0, equals).trim();
     const value = trimmed.slice(equals + 1).trim().replace(/^['"]|['"]$/g, "");
     if (!process.env[key]) process.env[key] = value;
+  }
+}
+
+function loadKeychainToken() {
+  try {
+    const token = execFileSync("security", [
+      "find-generic-password",
+      "-s", "GoDaddy Hosting API - Party Hall deploy",
+      "-a", "GODADDY_PAT",
+      "-w"
+    ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    if (/^gd_pat_[A-Za-z0-9_-]{30,}$/.test(token)) process.env.GODADDY_PAT = token;
+  } catch {
+    // Leave the existing environment value unchanged; the validation below reports missing access.
   }
 }
 
@@ -61,10 +76,29 @@ function syncProjectFiles() {
 
 function createZip() {
   rmSync(outputZip, { force: true });
-  execFileSync("zip", ["-qr", outputZip, ".", "-x", "node_modules/*", ".next/*", ".env*", "*.log", "public/images/pamphlets/*", "public/images/catalog/*", "public/images/catering/ai/*.png"], {
-    cwd: deployRoot,
-    stdio: "inherit"
-  });
+  const fullImportPath = join(deployRoot, "database", "full-import.sql");
+  const statements = readFileSync(fullImportPath, "utf8")
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter((statement) => /^CREATE\s+TABLE\b/i.test(statement));
+  if (!statements.length) throw new Error("Could not prepare the schema-only database restore file.");
+
+  const stagingRoot = mkdtempSync(join(tmpdir(), "godaddy-package-"));
+  const schemaDirectory = join(stagingRoot, "database");
+  mkdirSync(schemaDirectory, { recursive: true });
+  writeFileSync(join(schemaDirectory, "full-import.sql"), `${statements.map((statement) => `${statement};`).join("\n\n")}\n`);
+
+  try {
+    execFileSync("zip", [
+      "-qr", outputZip, ".", "-x", "node_modules/*", ".next/*", ".env*", "*.log",
+      "public/images/pamphlets/*", "public/images/catalog/*", "public/images/catering/ai/*.png",
+      "database/bookings-data.sql", "database/expenses-data.sql", "database/staff-users-data.sql",
+      "database/additional-income-data.sql", "database/full-import.sql"
+    ], { cwd: deployRoot, stdio: "inherit" });
+    execFileSync("zip", ["-q", outputZip, "database/full-import.sql"], { cwd: stagingRoot, stdio: "inherit" });
+  } finally {
+    rmSync(stagingRoot, { recursive: true, force: true });
+  }
 }
 
 async function api(path, options = {}) {
@@ -95,6 +129,7 @@ async function poll(label, readStatus, isComplete) {
 }
 
 loadPrivateEnvironment();
+if (!process.env.GODADDY_PAT || /paste|replace/i.test(process.env.GODADDY_PAT)) loadKeychainToken();
 const appId = process.env.GODADDY_APP_ID || "s9rxiphgty";
 if (!prepareOnly && (!process.env.GODADDY_PAT || /paste|replace/i.test(process.env.GODADDY_PAT))) {
   throw new Error("Create .env.godaddy.local from .env.godaddy.example and add your GoDaddy Personal Access Token.");

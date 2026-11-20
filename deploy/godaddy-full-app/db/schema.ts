@@ -1,4 +1,4 @@
-import { index, int, json, mysqlEnum, mysqlTable, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 export const bookings = mysqlTable("bookings", {
   id: int("id").autoincrement().primaryKey(),
@@ -14,6 +14,7 @@ export const bookings = mysqlTable("bookings", {
   address: varchar("address", { length: 2000 }).notNull().default(""),
   amount: int("amount").notNull().default(0),
   advanceReceived: int("advance_received").notNull().default(0),
+  paymentHistory: text("payment_history"),
   cctvPassword: varchar("cctv_password", { length: 32 }).notNull().default(""),
   status: mysqlEnum("status", ["confirmed", "cancelled"]).notNull().default("confirmed"),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),

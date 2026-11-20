@@ -1,11 +1,12 @@
 import { and, asc, eq, gte, lt } from "drizzle-orm";
-import { getDb } from "../../../../db";
+import { ensureBookingCustomerColumns, getDb } from "../../../../db";
 import { additionalIncome, bookings, expenses } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
 
 export async function GET(request: Request) {
   const staff = await getStaffSession(request);
   if (!staff) return Response.json({ error: "Please sign in" }, { status: 401 });
+  await ensureBookingCustomerColumns();
   const url = new URL(request.url);
   const year = url.searchParams.get("year") ?? "All";
   const month = url.searchParams.get("month") ?? "All";
@@ -38,5 +39,5 @@ export async function GET(request: Request) {
       if (Number.isInteger(bookingId)) commissionTotals.set(bookingId, (commissionTotals.get(bookingId) || 0) + income.amount);
     }
   }
-  return Response.json({ bookings: rows.map((row) => ({ ...row, expenseAmount: expenseTotals.get(row.id) || 0, commissionAmount: commissionTotals.get(row.id) || 0 })), role: staff.role });
+  return Response.json({ bookings: rows.map(({ paymentHistory: _paymentHistory, ...row }) => ({ ...row, expenseAmount: expenseTotals.get(row.id) || 0, commissionAmount: commissionTotals.get(row.id) || 0 })), role: staff.role });
 }

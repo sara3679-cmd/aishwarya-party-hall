@@ -17,6 +17,7 @@ export const bookings = sqliteTable(
     address: text("address").notNull().default(""),
     amount: integer("amount").notNull().default(0),
     advanceReceived: integer("advance_received").notNull().default(0),
+    paymentHistory: text("payment_history").notNull().default("[]"),
     cctvPassword: text("cctv_password").notNull().default(""),
     status: text("status", { enum: ["confirmed", "cancelled"] })
       .notNull()

@@ -5,6 +5,7 @@ import { bookings } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
 import { formatTimeRange12Hour } from "../../../../lib/format-time";
 import { syncHallBookingCalendar } from "../../../../lib/calendar-sync";
+import { BOOKING_PAYMENT_METHODS, bookingPaymentHistory } from "../../../../lib/booking-payments";
 
 function todayInChennai() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -19,12 +20,13 @@ export async function GET(request: Request) {
   if (!staff) return Response.json({ error: "Please sign in" }, { status: 401 });
   try {
     await ensureBookingCustomerColumns();
-    const rows = await getDb()
-      .select()
-      .from(bookings)
-      .where(gte(bookings.bookingDate, `${todayInChennai().slice(0, 7)}-01`))
-      .orderBy(asc(bookings.bookingDate), asc(bookings.startTime));
-    const safeRows = staff.role === "admin" ? rows : rows.map(({ amount: _amount, advanceReceived: _advance, ...booking }) => booking);
+    const includeHistory = staff.role === "admin" && new URL(request.url).searchParams.get("history") === "all";
+    const rows = includeHistory
+      ? await getDb().select().from(bookings).orderBy(asc(bookings.bookingDate), asc(bookings.startTime))
+      : await getDb().select().from(bookings).where(gte(bookings.bookingDate, `${todayInChennai().slice(0, 7)}-01`)).orderBy(asc(bookings.bookingDate), asc(bookings.startTime));
+    const safeRows = staff.role === "admin"
+      ? rows.map((booking) => ({ ...booking, paymentHistory: bookingPaymentHistory(booking.paymentHistory, booking.advanceReceived) }))
+      : rows.map(({ amount: _amount, advanceReceived: _advance, paymentHistory: _history, ...booking }) => booking);
     const nextBillNumbers: Record<string, string> = {};
     if (staff.role === "admin") {
       for (const location of ["Padi", "Korattur"] as const) {
@@ -59,6 +61,8 @@ export async function POST(request: Request) {
     const mobile = payload.mobile?.replace(/\s+/g, "").trim();
     const mobile2 = payload.mobile2?.replace(/\s+/g, "").trim();
     const address = payload.address?.trim();
+    const paymentDate = payload.paymentDate?.trim() || todayInChennai();
+    const paymentMethod = payload.paymentMethod?.trim() || "Cash";
     if (mobile2 && !/^\+?[0-9]{10,13}$/.test(mobile2)) return Response.json({ error: "Enter a valid second mobile number" }, { status: 400 });
     const amount = Number(payload.amount ?? 0);
     const advanceReceived = Number(payload.advanceReceived ?? 0);
@@ -73,6 +77,7 @@ export async function POST(request: Request) {
     if (!/^\+?[0-9]{10,13}$/.test(mobile)) return Response.json({ error: "Enter a valid mobile number" }, { status: 400 });
     if (!Number.isFinite(amount) || !Number.isFinite(advanceReceived) || amount < 0 || advanceReceived < 0) return Response.json({ error: "Enter valid amount details" }, { status: 400 });
     if (advanceReceived > amount) return Response.json({ error: "Advance received cannot exceed total amount" }, { status: 400 });
+    if (advanceReceived > 0 && (!isBookingDate(paymentDate) || !(BOOKING_PAYMENT_METHODS as readonly string[]).includes(paymentMethod))) return Response.json({ error: "Enter valid initial payment details" }, { status: 400 });
 
     const db = getDb();
     const slot = { bookingDate, startTime, endTime };
@@ -105,6 +110,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString().slice(0, 19).replace("T", " "),
       amount: Math.round(amount),
       advanceReceived: Math.round(advanceReceived),
+      paymentHistory: JSON.stringify(advanceReceived > 0 ? [{ amount: Math.round(advanceReceived), date: paymentDate, method: paymentMethod, note: "", legacy: false }] : []),
       cctvPassword: location === "Padi" ? crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase() : "",
       status: "confirmed" as const,
     };

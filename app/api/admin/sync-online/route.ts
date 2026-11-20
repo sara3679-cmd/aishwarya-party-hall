@@ -1,5 +1,5 @@
 import { asc } from "drizzle-orm";
-import { getDb, ensureExpenseOrderColumn, ensureOrderAdditionsTable } from "../../../../db";
+import { getDb, ensureBookingCctvPasswordColumn, ensureExpenseOrderColumn, ensureOrderAdditionsTable } from "../../../../db";
 import { additionalIncome, bookings, expenses, orderAdditions } from "../../../../db/schema";
 import { getStaffSession } from "../../../admin-auth";
 import { env } from "cloudflare:workers";
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const onlineSite = (process.env.ONLINE_SITE_URL || "https://www.aishwaryapartyhall.in").replace(/\/$/, "");
   if (!syncToken) return Response.json({ error: "Offline synchronization is not configured" }, { status: 503 });
 
-  await Promise.all([ensureExpenseOrderColumn(), ensureOrderAdditionsTable()]);
+  await Promise.all([ensureBookingCctvPasswordColumn(), ensureExpenseOrderColumn(), ensureOrderAdditionsTable()]);
   const db = getDb();
   const [bookingRows, expenseRows, incomeRows, additionRows, menuResult] = await Promise.all([
     db.select().from(bookings).orderBy(asc(bookings.id)),
