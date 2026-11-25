@@ -60,6 +60,9 @@ function validateBackup(value: unknown): value is BackupData {
 async function ensureExtraBackupTables() {
   await env.DB.batch([
     env.DB.prepare("CREATE TABLE IF NOT EXISTS catering_menu_items (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, meal TEXT NOT NULL, type TEXT NOT NULL, rate TEXT NOT NULL DEFAULT '', sides TEXT NOT NULL DEFAULT '[]', photo_path TEXT NOT NULL DEFAULT '')"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS catering_menu_categories (name TEXT PRIMARY KEY NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS catering_menu_category_migrations (name TEXT PRIMARY KEY NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS catering_menu_designs (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS cctv_camera_settings (camera_id INTEGER PRIMARY KEY, label TEXT NOT NULL, area TEXT NOT NULL, customer_visible INTEGER NOT NULL DEFAULT 0)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS greeting_drafts (id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, image TEXT NOT NULL, recipients TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS greeting_campaign_settings (campaign_id TEXT PRIMARY KEY NOT NULL, kind TEXT NOT NULL DEFAULT 'greeting', approved_hash TEXT, approved_at TEXT)"),

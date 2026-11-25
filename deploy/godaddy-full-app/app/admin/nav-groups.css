@@ -8,3 +8,38 @@
 .operationsDashboard{grid-column:1/-1;border-top:5px solid #b66f13}
 
 .remindersDashboard{grid-column:1/-1;border-top:5px solid #8d0b0f}.remindersDashboard>p:not(.kicker){color:#806f67;font-size:13px;line-height:1.5;margin-bottom:18px}
+
+/* Admin home: clear, touch-friendly shortcuts; existing pages and data APIs stay in place. */
+.adminDashboardPage{max-width:1440px;padding-top:42px}
+.adminDashboardPage>.dashboardHeader{margin-bottom:22px;padding:0 2px;border:0;background:transparent;box-shadow:none}
+.adminDashboardPage>.dashboardHeader h1{font-size:36px;letter-spacing:-.6px}
+.adminDashboardPage .adminDashboardGroups{display:flex;flex-direction:column;gap:18px;margin-top:20px}
+.adminDashboardPage .adminDashboardGroup{padding:22px 24px;border:1px solid #eee5dc;border-top:4px solid #8d0b0f;border-radius:12px;background:#fff;box-shadow:0 8px 28px rgba(53,29,20,.045)}
+.adminDashboardPage .ssFoodsDashboard{border-top-color:#d98a13}
+.adminDashboardPage .businessDashboard{border-top-color:#b66f13;background:#fffaf0}
+.adminDashboardPage .systemDashboard{border-top-color:#5d4a42}
+.dashboardGroupHeading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.dashboardGroupHeading .kicker{margin-bottom:5px}
+.adminDashboardPage .dashboardGroupHeading h2{margin:0;color:#382c29;font:26px/1.15 Georgia,serif}
+.dashboardGroupMark{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#fbf0df;color:#7c090c;font-size:11px;font-weight:900;letter-spacing:.08em}
+.ssFoodsDashboard .dashboardGroupMark{background:#fbefd9;color:#8a5708}
+.adminDashboardPage .dashboardLinkGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.adminDashboardPage .dashboardLinkGrid a{position:relative;display:flex;min-height:82px;align-items:center;justify-content:flex-start;flex-direction:row;gap:12px;border:1px solid #eee7e0;border-radius:9px;background:#fff;padding:13px 34px 13px 13px;color:#362c29;box-shadow:none;transition:border-color .15s,background .15s,transform .15s}
+.adminDashboardPage .dashboardLinkGrid a:hover{transform:translateY(-1px);border-color:#d7c1b6;background:#fffdfa;box-shadow:0 5px 15px rgba(53,29,20,.05)}
+.adminDashboardPage .dashboardLinkGrid a.primaryDashboardLink{border-color:#8d0b0f;background:#8d0b0f;color:#fff}
+.adminDashboardPage .dashboardLinkGrid a.primaryDashboardLink:hover{background:#72080c}
+.dashboardIcon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:10px;background:#fbf1e5;color:#7c090c;font-size:17px;font-weight:700}
+.ssFoodsDashboard .dashboardIcon{background:#fbf2e2;color:#8b5c12}
+.businessDashboard .dashboardIcon{background:#f6e8c8;color:#89600b}
+.systemDashboard .dashboardIcon{background:#f1edeb;color:#594a44}
+.adminDashboardPage .dashboardLinkGrid a.primaryDashboardLink .dashboardIcon{background:#a92f32;color:#fff}
+.dashboardLinkCopy{display:block;min-width:0;flex:1}
+.dashboardLinkCopy b{display:block;color:inherit;font-size:13px;line-height:1.3}
+.dashboardLinkCopy small{display:block;margin-top:4px;color:#82736d;font-size:10px;line-height:1.35}
+.adminDashboardPage .dashboardLinkGrid a.primaryDashboardLink .dashboardLinkCopy small{color:#f4ded3}
+.dashboardArrow{position:absolute;right:12px;color:#b4a8a2;font-size:16px}
+.adminDashboardPage .dashboardLinkGrid a.primaryDashboardLink .dashboardArrow{color:#f7dfc0}
+.adminDashboardPage .dashboardLinkGrid a.reportDashboardLink{background:#fffaf0;border-color:#ebdfc8}
+.adminDashboardPage .operationsDashboard{border-top-color:#b66f13}
+@media(max-width:900px){.adminDashboardPage .dashboardLinkGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.adminDashboardPage{padding:76px 14px 26px}.adminDashboardPage>.dashboardHeader{margin-bottom:18px}.adminDashboardPage>.dashboardHeader h1{font-size:29px}.adminDashboardPage .adminDashboardGroups{gap:13px;margin-top:14px}.adminDashboardPage .adminDashboardGroup{padding:17px 14px;border-radius:10px}.adminDashboardPage .dashboardGroupHeading{margin-bottom:12px}.adminDashboardPage .dashboardGroupHeading h2{font-size:23px}.adminDashboardPage .dashboardLinkGrid{grid-template-columns:1fr;gap:8px}.adminDashboardPage .dashboardLinkGrid a{min-height:68px;padding:11px 34px 11px 11px}.adminDashboardPage .dashboardIcon{flex-basis:36px;width:36px;height:36px}.dashboardLinkCopy b{font-size:13px}.dashboardLinkCopy small{font-size:10px}.dashboardArrow{right:11px}}

@@ -1,0 +1,74 @@
+.adminWorkspaceShell{min-height:100vh}
+.adminWorkspaceSidebar{position:fixed;z-index:30;inset:0 auto 0 0;display:flex;width:260px;flex-direction:column;overflow:hidden;background:#fff;border-right:1px solid #e8dfd6;color:#4c403b}
+.adminWorkspaceBrand{display:flex;flex:0 0 auto;align-items:center;gap:12px;min-height:112px;padding:15px 22px;border-bottom:1px solid #eee6de;color:inherit;text-decoration:none}
+.adminWorkspaceBrand img{width:46px;height:48px;object-fit:contain}
+.adminWorkspaceBrand b{display:block;color:#78070c;font:22px/1.1 Georgia,serif}
+.adminWorkspaceBrand small{display:block;margin-top:5px;color:#81726d;font-size:12px}
+.adminWorkspaceNav{flex:1;overflow:auto;padding:8px 13px 14px}
+.adminWorkspaceNavGroup{margin-top:17px}
+.adminWorkspaceNavGroup>p{margin:0 9px 8px;color:#a09590;font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+.adminWorkspaceNavLink{display:flex;min-height:42px;align-items:center;gap:11px;margin:2px 0;padding:8px 10px;border-radius:8px;color:#5a4c47;font-size:13px;font-weight:600;text-decoration:none;transition:background .15s,color .15s}
+.adminWorkspaceNavLink:hover,.adminWorkspaceNavLink.active{background:#fbf3e8;color:#78070c}
+.adminWorkspaceNavLink.active{font-weight:800}
+.adminWorkspaceNavLink i{display:grid;width:27px;height:27px;flex:0 0 27px;place-items:center;border-radius:8px;background:#f5eee8;color:#78070c;font-size:14px;font-style:normal}
+.adminWorkspaceIdentity{display:flex;flex:0 0 auto;align-items:center;gap:10px;padding:14px 18px;border-top:1px solid #eee6de}
+.adminWorkspaceIdentity>span{display:grid;width:34px;height:34px;place-items:center;border-radius:50%;background:#f5e4bd;color:#78070c;font-weight:800}
+.adminWorkspaceIdentity b{display:block;max-width:190px;overflow:hidden;color:#392d2a;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.adminWorkspaceIdentity small{color:#81726d;font-size:10px}
+.adminWorkspaceMain{min-width:0;min-height:100vh;margin-left:260px}
+.adminWorkspaceTopbar{position:sticky;z-index:20;top:0;display:flex;height:68px;align-items:center;justify-content:space-between;gap:16px;padding:0 28px;background:#fff;border-bottom:1px solid #eee6de}
+.adminWorkspaceCrumb{display:flex;align-items:center;gap:12px;color:#81726d;font-size:13px}
+.adminWorkspaceCrumb b{color:#392d2a}
+.adminWorkspaceActions{display:flex;align-items:center;gap:9px}
+.adminWorkspaceActions a,.adminWorkspaceActions button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #eadfda;border-radius:8px;background:#fff;padding:0 14px;color:#78070c;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer}
+.adminWorkspaceActions button{color:#392d2a}
+.adminWorkspaceMenuButton{display:none}
+.adminWorkspaceBackdrop{display:none}
+@media(max-width:760px){
+ .adminWorkspaceSidebar{z-index:42;width:min(300px,86vw);transform:translateX(-105%);transition:transform .2s ease;box-shadow:15px 0 40px rgba(31,16,12,.14)}
+ .adminWorkspaceSidebar.isOpen{transform:translateX(0)}
+ .adminWorkspaceBackdrop{position:fixed;z-index:41;inset:0;display:block;border:0;background:rgba(28,14,12,.42)}
+ .adminWorkspaceMain{margin-left:0}
+ .adminWorkspaceTopbar{height:58px;padding:0 13px}
+ .adminWorkspaceCrumb{gap:9px;font-size:12px}
+ .adminWorkspaceMenuButton{display:grid;width:38px;height:38px;place-items:center;border:1px solid #eee1d9;border-radius:8px;background:#fff;color:#78070c;font-size:18px;cursor:pointer}
+ .adminWorkspaceActions{gap:6px}
+ .adminWorkspaceActions a,.adminWorkspaceActions button{min-height:38px;padding:0 10px;font-size:11px}
+ .adminWorkspaceActions a{font-size:0}
+ .adminWorkspaceActions a::after{content:"Website ↗";font-size:11px}
+ .adminWorkspaceNavLink{min-height:46px}
+}
+@media(max-width:390px){.adminWorkspaceTopbar{padding:0 8px}.adminWorkspaceActions a,.adminWorkspaceActions button{padding:0 7px}.adminWorkspaceCrumb{font-size:11px}}
+
+/* Bring decoration and photography approval workspaces into the shared admin page style. */
+.adminWorkspaceMain .adminDecorationPage{box-sizing:border-box;width:100%;max-width:1440px;min-height:calc(100vh - 68px);margin:0 auto;padding:42px clamp(20px,4vw,58px) 70px;background:var(--cream);color:var(--ink)}
+.adminWorkspaceMain .adminDecorHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;margin:0 0 25px;padding:0 0 23px;border-bottom:1px solid var(--line)}
+.adminWorkspaceMain .adminDecorHeader h1{margin:7px 0 9px;color:var(--maroon);font:36px/1.12 Georgia,serif;letter-spacing:-.5px}
+.adminWorkspaceMain .adminDecorHeader>div:first-child>p:last-child{margin:0;color:var(--muted);font-size:13px}
+.adminWorkspaceMain .adminDecorHeaderActions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.adminWorkspaceMain .adminDecorHeaderActions a{display:inline-flex;min-height:40px;align-items:center;justify-content:center;border:1px solid #e8d8ca;border-radius:7px;background:#fff;padding:0 14px;color:var(--maroon);font-size:12px;font-weight:700;text-decoration:none}
+.adminWorkspaceMain .adminDecorHeaderActions a:hover{border-color:var(--gold);background:#fffaf1}
+.adminWorkspaceMain .adminDecorationStatus{margin:0 0 16px;padding:0;color:var(--maroon);font-size:13px;font-weight:700}
+.adminWorkspaceMain .adminDecorationStatus:empty{display:none}
+.adminWorkspaceMain .adminDecorationPage .decorAdminGrid{grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:20px;align-items:start}
+.adminWorkspaceMain .adminDecorationPage .decorPanel{margin-bottom:18px;padding:21px;border:1px solid #eadfcd;border-radius:11px;background:#fff;box-shadow:0 8px 24px rgba(79,36,24,.045)}
+.adminWorkspaceMain .adminDecorationPage .decorPanel h2,.adminWorkspaceMain .adminDecorationPage .decorAdminGrid>section>h2{margin:0 0 17px;color:#45332e;font:24px/1.2 Georgia,serif}
+.adminWorkspaceMain .adminDecorationPage .decorPanel h3{color:#45332e;font-size:16px}
+.adminWorkspaceMain .adminDecorationPage label{color:#594943;font-size:12px;font-weight:700}
+.adminWorkspaceMain .adminDecorationPage input:not([type="file"]),.adminWorkspaceMain .adminDecorationPage textarea,.adminWorkspaceMain .adminDecorationPage select{border:1px solid #d9cec5;border-radius:6px;background:#fff;color:#302523;font:13px/1.4 Arial,sans-serif}
+.adminWorkspaceMain .adminDecorationPage input:focus,.adminWorkspaceMain .adminDecorationPage textarea:focus,.adminWorkspaceMain .adminDecorationPage select:focus{outline:2px solid #d69b294d;border-color:#bd8522}
+.adminWorkspaceMain .adminDecorationPage .decorFilters{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr)) auto;align-items:end;gap:10px;margin:0 0 16px;padding:14px;border:1px solid #eee5dc;border-radius:9px;background:#fffaf3}
+.adminWorkspaceMain .adminDecorationPage .decorFilters label{min-width:0;margin:0}
+.adminWorkspaceMain .adminDecorationPage .decorActions{margin-top:17px;padding-top:15px;border-top:1px solid #eee5dc}
+.adminWorkspaceMain .adminDecorationPage .decorActions button,.adminWorkspaceMain .adminDecorationPage .decorFilters button,.adminWorkspaceMain .adminDecorationPage .decorPanel>button{min-height:40px;border:0;border-radius:7px;background:var(--maroon);padding:9px 15px;color:#fff;font-size:12px;font-weight:700}
+.adminWorkspaceMain .adminDecorationPage .decorActions button:hover,.adminWorkspaceMain .adminDecorationPage .decorFilters button:hover,.adminWorkspaceMain .adminDecorationPage .decorPanel>button:hover{background:#5f0609}
+.adminWorkspaceMain .adminDecorationPage .decorActions .decorDeleteButton{background:#a62335}
+.adminWorkspaceMain .adminDecorationPage .decorActions .decorDeleteButton:hover{background:#871b2b}
+.adminWorkspaceMain .adminDecorationPage .decorActions label{width:130px}
+.adminWorkspaceMain .adminDecorationPage .decorActions label input{margin-top:5px}
+.adminWorkspaceMain .adminDecorationPage .decorThumbs img{border:1px solid #eee5dc;border-radius:7px}
+.adminWorkspaceMain .adminDecorationPage .decorThumbs button{border:0;border-radius:5px;background:#f5eadb;padding:6px 9px;color:var(--maroon);font-size:11px;font-weight:700}
+.adminWorkspaceMain .adminDecorationPage .decorPanel details{margin:14px 0;padding:12px;border:1px solid #eee5dc;border-radius:8px;background:#fffaf3}
+.adminWorkspaceMain .adminDecorationPage .decorPanel summary{color:var(--maroon);font-size:13px;font-weight:700;cursor:pointer}
+@media(max-width:900px){.adminWorkspaceMain .adminDecorationPage .decorAdminGrid{grid-template-columns:1fr}.adminWorkspaceMain .adminDecorationPage .decorFilters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.adminWorkspaceMain .adminDecorationPage{min-height:calc(100vh - 58px);padding:28px 14px 48px}.adminWorkspaceMain .adminDecorHeader{align-items:flex-start;flex-direction:column;gap:13px;padding-bottom:18px;margin-bottom:18px}.adminWorkspaceMain .adminDecorHeader h1{font-size:30px}.adminWorkspaceMain .adminDecorationPage .decorPanel{padding:16px}.adminWorkspaceMain .adminDecorationPage .decorFilters{grid-template-columns:1fr}.adminWorkspaceMain .adminDecorationPage .decorActions button{min-height:44px}}

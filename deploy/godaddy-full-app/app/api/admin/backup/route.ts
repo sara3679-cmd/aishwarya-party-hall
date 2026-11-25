@@ -69,6 +69,9 @@ function validateBackup(value: unknown): value is BackupData {
 async function ensureExtraBackupTables() {
   const db = getDb();
   await Promise.all([
+    db.execute(sql`CREATE TABLE IF NOT EXISTS catering_menu_categories (name VARCHAR(80) PRIMARY KEY NOT NULL)`),
+    db.execute(sql`CREATE TABLE IF NOT EXISTS catering_menu_category_migrations (name VARCHAR(80) PRIMARY KEY NOT NULL)`),
+    db.execute(sql`CREATE TABLE IF NOT EXISTS catering_menu_designs (id VARCHAR(64) PRIMARY KEY NOT NULL, name VARCHAR(255) NOT NULL, payload LONGTEXT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`),
     db.execute(sql`CREATE TABLE IF NOT EXISTS cctv_camera_settings (camera_id INT PRIMARY KEY, label VARCHAR(80) NOT NULL, area VARCHAR(120) NOT NULL, customer_visible TINYINT(1) NOT NULL DEFAULT 0)`),
     db.execute(sql`CREATE TABLE IF NOT EXISTS greeting_drafts (id VARCHAR(80) PRIMARY KEY, title VARCHAR(120) NOT NULL, message TEXT NOT NULL, image MEDIUMTEXT NOT NULL, recipients MEDIUMTEXT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)`),
     db.execute(sql`CREATE TABLE IF NOT EXISTS greeting_campaign_settings (campaign_id VARCHAR(80) PRIMARY KEY, kind VARCHAR(30) NOT NULL DEFAULT 'greeting', approved_hash VARCHAR(128), approved_at VARCHAR(64))`),
