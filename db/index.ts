@@ -23,6 +23,9 @@ export function ensureBookingCctvPasswordColumn() {
     const columns = new Set((info.results ?? []).map((column) => column.name));
     if (!columns.has("cctv_password")) await env.DB.prepare("ALTER TABLE bookings ADD COLUMN cctv_password TEXT DEFAULT '' NOT NULL").run();
     if (!columns.has("payment_history")) await env.DB.prepare("ALTER TABLE bookings ADD COLUMN payment_history TEXT DEFAULT '[]' NOT NULL").run();
+    // Older imports may have populated this column with NULL even though new
+    // booking writes require a JSON string. Repair those rows before updates.
+    await env.DB.prepare("UPDATE bookings SET payment_history = '[]' WHERE payment_history IS NULL").run();
     await env.DB.batch([
       env.DB.prepare("DROP INDEX IF EXISTS bookings_exact_slot_idx"),
       env.DB.prepare("CREATE UNIQUE INDEX bookings_exact_slot_idx ON bookings (location, booking_date, start_time, end_time) WHERE status = 'confirmed'"),

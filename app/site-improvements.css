@@ -40,14 +40,16 @@
 @media (max-width: 620px) {
   .bookingManagerPage .bookingReport { padding: 20px 14px; }
   .bookingManagerPage .bookingTableWrap,
-  .bookingManagerTableWrap { overflow: visible; margin: 0; border: 0; }
+  .bookingManagerPage .bookingManagerTableWrap { box-sizing: border-box; width: 100%; max-width: 100%; overflow-x: hidden; margin: 0; border: 0; }
   .bookingManagerPage .bookingManagerTable,
   .bookingReport .bookingManagerTable { display: block; width: 100%; min-width: 0; table-layout: auto; font-size: 13px; }
+  /* The desktop admin table has a deliberate 1300px minimum; remove it when rows become phone cards. */
+  .bookingManagerPage .bookingReport .adminBookingManagerTable { box-sizing: border-box; display: block; width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed; }
   .bookingManagerPage .bookingManagerTable thead { display: none; }
-  .bookingManagerPage .bookingManagerTable tbody { display: grid; gap: 12px; }
-  .bookingManagerPage .bookingManagerTable tbody tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 14px; padding: 16px 14px; border: 1px solid rgba(124,9,12,.14); border-left: 5px solid #d99920; border-radius: 8px; background: #fffaf3; box-shadow: 0 5px 14px rgba(79,36,24,.07); }
+  .bookingManagerPage .bookingManagerTable tbody { display: grid; box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; gap: 12px; }
+  .bookingManagerPage .bookingManagerTable tbody tr { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 14px; padding: 16px 14px; border: 1px solid rgba(124,9,12,.14); border-left: 5px solid #d99920; border-radius: 8px; background: #fffaf3; box-shadow: 0 5px 14px rgba(79,36,24,.07); }
   .bookingManagerPage .bookingManagerTable tbody tr:has(.locationBadge.korattur) { border-left-color: #8a55a0; background: #f6effa; }
-  .bookingManagerPage .bookingManagerTable tbody td { display: block; width: auto!important; min-width: 0; padding: 9px 0; border: 0!important; border-bottom: 1px solid rgba(124,9,12,.1)!important; text-align: left!important; overflow-wrap: anywhere; font-size: 13px; }
+  .bookingManagerPage .bookingManagerTable tbody td { display: block; box-sizing: border-box; width: auto!important; min-width: 0!important; max-width: 100%; padding: 9px 0; border: 0!important; border-bottom: 1px solid rgba(124,9,12,.1)!important; text-align: left!important; overflow-wrap: anywhere; font-size: 13px; }
   .bookingManagerPage .bookingManagerTable tbody td:nth-child(1) { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 0; color: var(--muted); font-size: 11px; }
   .bookingManagerPage .bookingManagerTable tbody td:nth-child(2) { grid-column: 1; grid-row: 2; }
   .bookingManagerPage .bookingManagerTable tbody td:nth-child(3) { grid-column: 1 / -1; grid-row: 3; }
@@ -75,6 +77,8 @@
   .bookingManagerPage .bookingManagerTable .customerCell small { display: block; max-height: none; margin-top: 5px; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
   .bookingManagerPage .bookingManagerTable .locationBadge { display: inline-block; width: auto; min-width: 74px; padding: 7px 10px; }
   .bookingManagerPage .bookingManagerTable .balanceCell { font-size: 15px; }
+  .bookingManagerPage .adminBookingManagerTable .bookingManagerActionsCell { width: auto!important; min-width: 0!important; }
+  .bookingManagerPage .adminBookingManagerTable .bookingActionMenu { box-sizing: border-box; width: 100%; min-width: 0; }
   .bookingManagerPage .bookingManagerTable .bookingActions { display: grid!important; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px!important; }
   .bookingManagerPage .bookingManagerTable .bookingActions a,
   .bookingManagerPage .bookingManagerTable .bookingActions button { min-height: 40px; padding: 8px 5px!important; font-size: 10px; line-height: 1.15; }
@@ -120,6 +124,8 @@
   .siteHeader .menuButton { margin-left: 0; }
 }
 @media (max-width: 620px) {
+  /* Keep fixed contact buttons clear of the availability calendar on phones. */
+  body:has(#enquiry:target) .floatingActions { display: none; }
   .sectionPad { padding: 64px 22px; }
   .enquiry { grid-template-columns: minmax(0,1fr); }
   h2 { font-size: clamp(37px, 10vw, 50px); letter-spacing: -1.6px; }

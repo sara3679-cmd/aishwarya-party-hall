@@ -50,7 +50,7 @@ export function restoreCommands(snapshot: DatabaseSnapshot, current: {name:strin
  });
  const commands:RestoreCommand[] = portableTables.map(table=>({sql:`DELETE FROM ${quoteIdentifier(table.name)}`,values:[]}));
  for (const table of portableTables) for (const row of table.rows) {
-  const values = table.columns.map(column=>column === 'revision' && (table.name === 'staff_rent_records' || table.name === 'decoration_catalog' || table.name === 'photography_catalog') ? Math.max(Number(row[column]),revisions[table.name] ?? 0)+1 : row[column]);
+  const values = table.columns.map(column=>column === 'revision' && (table.name === 'staff_rent_records' || table.name === 'decoration_catalog' || table.name === 'photography_catalog') ? Math.max(Number(row[column]),revisions[table.name] ?? 0)+1 : table.name === 'bookings' && column === 'payment_history' && row[column] == null ? '[]' : row[column]);
   commands.push({sql:`INSERT INTO ${quoteIdentifier(table.name)} (${table.columns.map(quoteIdentifier).join(',')}) VALUES (${table.columns.map(()=>'?').join(',')})`,values});
  }
  for (const sequence of snapshot.sequences.filter(sequence=>schema.has(sequence.name))) {

@@ -10,17 +10,16 @@
 .bookingQuickFinance>div span{color:#806f67;font-size:11px}
 .bookingQuickFinance>a{display:inline-flex;min-height:40px;align-items:center;justify-content:center;border:1px solid #8c0007;border-radius:999px;background:#fff;color:#8c0007;padding:8px 14px;font-size:11px;font-weight:800;text-decoration:none;white-space:nowrap}
 .bookingQuickFinance>a:hover{background:#8c0007;color:#fff}
-.adminBookingManagerTable{min-width:1300px!important;table-layout:fixed}
+.adminBookingManagerTable{min-width:1230px!important;table-layout:fixed}
 .adminBookingManagerTable th:nth-child(1),.adminBookingManagerTable td:nth-child(1){width:55px}
 .adminBookingManagerTable th:nth-child(2),.adminBookingManagerTable td:nth-child(2){width:80px}
 .adminBookingManagerTable th:nth-child(3),.adminBookingManagerTable td:nth-child(3){width:140px}
 .adminBookingManagerTable th:nth-child(3),.adminBookingManagerTable td:nth-child(3){min-width:0}
-.adminBookingManagerTable th:nth-child(4),.adminBookingManagerTable td:nth-child(4){width:95px}
-.adminBookingManagerTable th:nth-child(5),.adminBookingManagerTable td:nth-child(5){width:135px}
-.adminBookingManagerTable th:nth-child(6),.adminBookingManagerTable td:nth-child(6){width:210px}
-.adminBookingManagerTable th:nth-child(7),.adminBookingManagerTable td:nth-child(7),.adminBookingManagerTable th:nth-child(8),.adminBookingManagerTable td:nth-child(8),.adminBookingManagerTable th:nth-child(9),.adminBookingManagerTable td:nth-child(9){width:95px}
+.adminBookingManagerTable th:nth-child(4),.adminBookingManagerTable td:nth-child(4){width:165px}
+.adminBookingManagerTable th:nth-child(5),.adminBookingManagerTable td:nth-child(5){width:150px}
+.adminBookingManagerTable th:nth-child(6),.adminBookingManagerTable td:nth-child(6),.adminBookingManagerTable th:nth-child(7),.adminBookingManagerTable td:nth-child(7),.adminBookingManagerTable th:nth-child(8),.adminBookingManagerTable td:nth-child(8){width:95px}
 .adminBookingManagerTable .moneyColumn,.adminBookingManagerTable .moneyCell{min-width:0}
-.adminBookingManagerTable th:nth-child(10),.adminBookingManagerTable .bookingManagerActionsCell{width:150px;min-width:150px}
+.adminBookingManagerTable th:nth-child(9),.adminBookingManagerTable .bookingManagerActionsCell{width:150px;min-width:150px}
 .adminBookingManagerTable .bookingManagerActionsCell{padding:12px 10px}
 .bookingManagerPage .adminBookingManagerTable .bookingActionMenu{position:relative;width:100%;text-align:left}
 .bookingManagerPage .adminBookingManagerTable .bookingActionMenu>summary{display:flex;min-height:44px;align-items:center;justify-content:center;border-radius:999px;background:#8c0007;color:#fff;padding:8px 12px;font:800 12px/1.2 Arial,sans-serif;list-style:none;cursor:pointer}
@@ -32,6 +31,7 @@
 .bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>a,.bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>button{display:flex;min-height:40px;align-items:center;justify-content:flex-start;width:100%;border:0!important;border-radius:5px!important;background:#fff!important;color:#7c090c!important;padding:9px 10px!important;font:700 12px/1.25 Arial,sans-serif!important;text-align:left;text-decoration:none;white-space:normal;cursor:pointer}
 .bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>a:hover,.bookingManagerPage .adminBookingManagerTable .bookingActionMenuItems>button:hover{background:#fff2dc!important}
 .adminBookingManagerTable .customerCell{min-width:0;overflow-wrap:anywhere}
+.adminBookingManagerTable .bookingFunctionName{display:block;margin-top:6px;color:#5e443d;font-family:Georgia,serif;font-size:14px}
 .overnightDateNotice{display:block;margin-top:3px;color:#76655c;font-size:12px;line-height:1.5}
 .overnightDateNotice.active{color:#7c090c;font-weight:800}
 .bookingPaymentNotice{display:grid;gap:5px;margin:12px 0;padding:13px 15px;border-left:4px solid #d18a19;background:#fff7e8;color:#563c34;line-height:1.45}

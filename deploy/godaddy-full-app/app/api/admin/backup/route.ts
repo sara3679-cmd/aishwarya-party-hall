@@ -152,7 +152,12 @@ export async function POST(request: Request) {
       await ensureExtraBackupTables();
       await Promise.all([db.execute(sql`DELETE FROM cctv_camera_settings`), db.execute(sql`DELETE FROM greeting_manual_sends`), db.execute(sql`DELETE FROM greeting_campaign_settings`), db.execute(sql`DELETE FROM greeting_drafts`)]);
     }
-    for (const row of payload.data.bookings) await db.insert(bookings).values(row);
+    for (const row of payload.data.bookings) await db.insert(bookings).values({
+      ...row,
+      paymentHistory: typeof row.paymentHistory === "string"
+        ? row.paymentHistory
+        : JSON.stringify(row.paymentHistory ?? []),
+    });
     for (const row of payload.data.expenses) await db.insert(expenses).values(row);
     for (const row of payload.data.additionalIncome) await db.insert(additionalIncome).values(row);
     for (const row of payload.data.staffUsers) await db.insert(staffUsers).values(row);

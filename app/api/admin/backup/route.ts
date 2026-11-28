@@ -175,7 +175,12 @@ export async function POST(request: Request) {
     await db.delete(additionalIncome);
     await db.delete(staffUsers);
     if (payload.version >= 2) await db.delete(orderAdditions);
-    for (const row of payload.data.bookings) await db.insert(bookings).values(row);
+    for (const row of payload.data.bookings) await db.insert(bookings).values({
+      ...row,
+      paymentHistory: typeof row.paymentHistory === "string"
+        ? row.paymentHistory
+        : JSON.stringify(row.paymentHistory ?? []),
+    });
     for (const row of payload.data.expenses) await db.insert(expenses).values(row);
     for (const row of payload.data.additionalIncome) await db.insert(additionalIncome).values(row);
     for (const row of payload.data.staffUsers) await db.insert(staffUsers).values(row);

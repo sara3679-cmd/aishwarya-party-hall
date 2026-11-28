@@ -130,7 +130,9 @@ async function poll(label, readStatus, isComplete) {
 
 loadPrivateEnvironment();
 if (!process.env.GODADDY_PAT || /paste|replace/i.test(process.env.GODADDY_PAT)) loadKeychainToken();
-const appId = process.env.GODADDY_APP_ID || "s9rxiphgty";
+const configuredAppId = process.env.GODADDY_APP_ID || "s9rxiphgty";
+// GoDaddy's Hosting API expects the product prefix for Node.js app IDs.
+const appId = /^[A-Z][A-Z0-9_]*-/.test(configuredAppId) ? configuredAppId : `NODEJS-${configuredAppId}`;
 if (!prepareOnly && (!process.env.GODADDY_PAT || /paste|replace/i.test(process.env.GODADDY_PAT))) {
   throw new Error("Create .env.godaddy.local from .env.godaddy.example and add your GoDaddy Personal Access Token.");
 }
